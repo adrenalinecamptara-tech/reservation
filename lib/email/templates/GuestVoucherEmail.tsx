@@ -13,17 +13,19 @@ import type { Reservation } from "@/lib/db/types";
 
 interface Props {
   reservation: Reservation;
+  isUpdate?: boolean;
 }
 
-export function GuestVoucherEmail({ reservation }: Props) {
+export function GuestVoucherEmail({ reservation, isUpdate = false }: Props) {
   const firstName = reservation.first_name;
 
   return (
     <Html>
       <Head />
       <Preview>
-        Vaučer potvrđen — Adrenaline Camp Tara čeka te{" "}
-        {reservation.arrival_date}
+        {isUpdate
+          ? `Izmjena rezervacije — Adrenaline Camp Tara (${reservation.voucher_number})`
+          : `Vaučer potvrđen — Adrenaline Camp Tara čeka te ${reservation.arrival_date}`}
       </Preview>
       <Body style={body}>
         <Container style={container}>
@@ -36,11 +38,14 @@ export function GuestVoucherEmail({ reservation }: Props) {
           {/* Greeting */}
           <Section style={section}>
             <Heading as="h2" style={greeting}>
-              Sve je potvrđeno, {firstName}!
+              {isUpdate
+                ? `Izmjena potvrđena, ${firstName}!`
+                : `Sve je potvrđeno, ${firstName}!`}
             </Heading>
             <Text style={body_text}>
-              Tvoja rezervacija je odobrena. U prilogu ovog mejla nalazi se tvoj
-              vaučer — sačuvaj ga i donesi u kamp.
+              {isUpdate
+                ? "Podaci tvoje rezervacije su izmijenjeni. U prilogu se nalazi ažurirani vaučer — zamijeni ga starim i donesi u kamp."
+                : "Tvoja rezervacija je odobrena. U prilogu ovog mejla nalazi se tvoj vaučer — sačuvaj ga i donesi u kamp."}
             </Text>
           </Section>
 
@@ -114,11 +119,19 @@ export function GuestVoucherEmail({ reservation }: Props) {
               Šta poneti
             </Heading>
             <Text style={body_text}>
-              Kupaći kostim, za muskarce bitno je da nije sorc nego uz telo da
-              bi vam bilo udobnije u odelu. Nešto toplo za veče jer noći znaju
-              da budu hladne, Ukoliko ne zelis da nosis cizmice za rafting moras
-              poneti svoju obucu koja moze da se smoči, i najvažnije dobro
-              raspoloženje. Sve ostalo mi obezbeđujemo.
+              Kupaći kostim, za muškarce bitno je da nije šorc nego kupaći uz
+              telo da bi vam bilo udobnije u odelu.
+            </Text>
+            <Text style={body_text}>
+              Nešto toplo za veče jer noći znaju da budu hladne,
+            </Text>
+            <Text style={body_text}>
+              Ukoliko ne zelis da nosis cizmice za rafting moras poneti svoju
+              obucu koja moze da se smoči
+            </Text>
+            <Text style={body_text}>
+              I najvažnije od svega potrebno je poneti dobro raspoloženje :) Sve
+              ostalo mi obezbeđujemo.
             </Text>
           </Section>
 

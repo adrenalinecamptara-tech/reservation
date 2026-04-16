@@ -3,7 +3,7 @@ import type { Reservation, ReservationInsert, ReservationUpdate } from "@/lib/db
 import { markTokenUsed } from "./linkService";
 import { notifyAdmin } from "./emailService";
 import { generateVoucher } from "./pdfService";
-import { sendVoucherToGuest } from "./emailService";
+import { sendVoucherToGuest, sendUpdatedVoucherToGuest } from "./emailService";
 
 /**
  * Create a reservation from guest form submission.
@@ -145,6 +145,30 @@ export async function updateReservation(
   if (error || !reservation)
     throw new Error(`Failed to update reservation: ${error?.message}`);
   return reservation;
+}
+
+/**
+ * Regenerate the voucher PDF and resend it to the guest as an update confirmation.
+ * Sets status to "modified".
+ */
+export async function resendVoucher(id: string): Promise<Reservation> {
+  const reservation = await getReservation(id);
+  const pdfBuffer = await generateVoucher(reservation);
+  await sendUpdatedVoucherToGuest(reservation, pdfBuffer);
+
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("reservations")
+    .update({
+      status: "modified",
+      voucher_sent_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select("*, cabin:cabins(*)")
+    .single();
+
+  if (error || !data) throw new Error(`Failed to mark resent: ${error?.message}`);
+  return data;
 }
 
 /**

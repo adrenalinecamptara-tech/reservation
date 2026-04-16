@@ -21,6 +21,7 @@ interface RegistrationState {
   prevStep: () => void;
   setPersonalInfo: (data: PersonalInfoValues) => void;
   setGroupDetails: (data: GroupDetailsValues) => void;
+  setCalculatedTotal: (total: number | null) => void;
   setPayment: (data: Partial<PaymentValues>) => void;
   reset: () => void;
 }
@@ -50,6 +51,8 @@ export const useRegistrationStore = create<RegistrationState>()(
       },
       setPersonalInfo: (data) => set({ personalInfo: data }),
       setGroupDetails: (data) => set({ groupDetails: data }),
+      setCalculatedTotal: (total) =>
+        set((s) => ({ payment: { ...s.payment, total_amount: total ?? undefined } })),
       setPayment: (data) =>
         set((s) => ({ payment: { ...s.payment, ...data } })),
       reset: () => set(initialState),

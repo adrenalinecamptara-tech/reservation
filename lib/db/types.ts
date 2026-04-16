@@ -7,6 +7,18 @@
 export type ReservationStatus = "pending" | "approved" | "cancelled" | "modified";
 export type Floor = "ground" | "upper";
 
+export interface Package {
+  id: string;
+  name: string;
+  includes: string;
+  description: string | null;
+  weekend_price: number;
+  weekday_price: number;
+  status: "active" | "inactive";
+  sort_order: number;
+  created_at: string;
+}
+
 export interface Cabin {
   id: string;
   name: string;
@@ -50,6 +62,8 @@ export interface Reservation {
   // Payment proof
   payment_proof_path: string | null;
   payment_proof_name: string | null;
+  // Package
+  package_id: string | null;
   // Cabin
   cabin_id: string | null;
   floor: Floor | null;
@@ -87,6 +101,7 @@ export interface ReservationInsert {
   currency?: string;
   payment_proof_path?: string | null;
   payment_proof_name?: string | null;
+  package_id?: string | null;
   cabin_id?: string | null;
   floor?: Floor | null;
 }
@@ -106,6 +121,7 @@ export interface ReservationUpdate {
   remaining_amount?: number | null;
   payment_proof_path?: string | null;
   payment_proof_name?: string | null;
+  package_id?: string | null;
   cabin_id?: string | null;
   floor?: Floor | null;
   status?: ReservationStatus;
@@ -135,6 +151,11 @@ export type Database = {
         Row: Cabin;
         Insert: Omit<Cabin, "id" | "created_at">;
         Update: Partial<Omit<Cabin, "id" | "created_at">>;
+      };
+      packages: {
+        Row: Package;
+        Insert: Omit<Package, "id" | "created_at">;
+        Update: Partial<Omit<Package, "id" | "created_at">>;
       };
     };
     Enums: {

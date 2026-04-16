@@ -77,3 +77,39 @@ export async function sendVoucherToGuest(
 
   console.log("[emailService] sendVoucherToGuest result", JSON.stringify(result));
 }
+
+/**
+ * Send updated voucher email to guest after admin edits a reservation.
+ */
+export async function sendUpdatedVoucherToGuest(
+  reservation: Reservation,
+  pdfBuffer: Buffer
+): Promise<void> {
+  console.log("[emailService] sendUpdatedVoucherToGuest start", {
+    from: FROM,
+    to: reservation.email,
+    reservationId: reservation.id,
+    voucherNumber: reservation.voucher_number,
+    resendKeySet: !!process.env.RESEND_API_KEY,
+  });
+
+  const { GuestVoucherEmail } = await import(
+    "@/lib/email/templates/GuestVoucherEmail"
+  );
+  const React = await import("react");
+
+  const result = await getResend().emails.send({
+    from: FROM,
+    to: reservation.email,
+    subject: `Izmjena rezervacije — Adrenaline Camp Tara (${reservation.voucher_number})`,
+    react: React.createElement(GuestVoucherEmail, { reservation, isUpdate: true }),
+    attachments: [
+      {
+        filename: `vaucer-${reservation.voucher_number}.pdf`,
+        content: pdfBuffer,
+      },
+    ],
+  });
+
+  console.log("[emailService] sendUpdatedVoucherToGuest result", JSON.stringify(result));
+}

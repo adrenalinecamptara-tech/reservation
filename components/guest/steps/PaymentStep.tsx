@@ -1,11 +1,15 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { paymentSchema, type PaymentValues } from "@/lib/validations/registrationSchema";
+import {
+  paymentSchema,
+  type PaymentValues,
+} from "@/lib/validations/registrationSchema";
 import { useRegistrationStore } from "@/lib/store/registrationStore";
+import { calcRemaining } from "@/lib/utils/pricing";
 
 interface Props {
   token: string;
@@ -18,9 +22,14 @@ export function PaymentStep({ token }: Props) {
   const { personalInfo, groupDetails, payment, setPayment, prevStep, reset } =
     useRegistrationStore();
 
+  // total_amount may be pre-calculated in step 2 when a package was selected
+  const prefilledTotal = payment.total_amount ?? null;
+  const hasPackage = !!(groupDetails as { package_id?: string | null })
+    .package_id;
+
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [uploadedFileName, setUploadedFileName] = useState<string>(
-    payment.payment_proof_name ?? ""
+    payment.payment_proof_name ?? "",
   );
   const [submitting, setSubmitting] = useState(false);
 
@@ -28,6 +37,7 @@ export function PaymentStep({ token }: Props) {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<PaymentValues>({
     resolver: zodResolver(paymentSchema),
@@ -40,13 +50,28 @@ export function PaymentStep({ token }: Props) {
     },
   });
 
+  const watchedDeposit = watch("deposit_amount");
+
+  // Auto-calculate remaining when package selected
+  useEffect(() => {
+    if (hasPackage && prefilledTotal != null && watchedDeposit > 0) {
+      const remaining = calcRemaining(prefilledTotal, watchedDeposit);
+      setValue("remaining_amount", remaining);
+    }
+  }, [watchedDeposit, prefilledTotal, hasPackage, setValue]);
+
   // Handle file upload to Supabase Storage via signed URL
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
 
-      const allowedTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+      const allowedTypes = [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "application/pdf",
+      ];
       if (!allowedTypes.includes(file.type)) {
         alert("Dozvoljeni formati: JPEG, PNG, WebP, PDF");
         return;
@@ -77,7 +102,10 @@ export function PaymentStep({ token }: Props) {
 
         setValue("payment_proof_path", storagePath, { shouldValidate: true });
         setValue("payment_proof_name", file.name);
-        setPayment({ payment_proof_path: storagePath, payment_proof_name: file.name });
+        setPayment({
+          payment_proof_path: storagePath,
+          payment_proof_name: file.name,
+        });
         setUploadedFileName(file.name);
         setUploadState("done");
       } catch (err) {
@@ -85,7 +113,7 @@ export function PaymentStep({ token }: Props) {
         setUploadState("error");
       }
     },
-    [token, setValue, setPayment]
+    [token, setValue, setPayment],
   );
 
   const onSubmit = async (data: PaymentValues) => {
@@ -95,6 +123,7 @@ export function PaymentStep({ token }: Props) {
         ...personalInfo,
         ...groupDetails,
         ...data,
+        total_amount: prefilledTotal ?? data.total_amount,
         currency: "EUR",
         invite_link_id: null,
       };
@@ -127,6 +156,19 @@ export function PaymentStep({ token }: Props) {
         (slika ili PDF). Ostatak plaćate pri dolasku u kamp.
       </p>
 
+      {/* Total — read-only if pre-calculated from package */}
+      {hasPackage && prefilledTotal != null ? (
+        <div className="act-field act-field--calc">
+          <label className="act-label">Ukupna cijena (izračunato)</label>
+          <div className="act-calc-value">{prefilledTotal} €</div>
+          <input
+            type="hidden"
+            {...register("total_amount", { valueAsNumber: true })}
+            value={prefilledTotal}
+          />
+        </div>
+      ) : null}
+
       <div className="act-row-2">
         <div className="act-field">
           <label className="act-label" htmlFor="deposit_amount">
@@ -148,14 +190,16 @@ export function PaymentStep({ token }: Props) {
         <div className="act-field">
           <label className="act-label" htmlFor="remaining_amount">
             Ostatak za platiti (€)
+            {hasPackage}
           </label>
           <input
             id="remaining_amount"
             type="number"
             step="0.01"
             min="0"
-            className={`act-input ${errors.remaining_amount ? "act-input--error" : ""}`}
-            placeholder="65.00"
+            readOnly={hasPackage && prefilledTotal != null}
+            className={`act-input ${hasPackage ? "act-input--readonly" : ""} ${errors.remaining_amount ? "act-input--error" : ""}`}
+            placeholder={hasPackage ? "Izračunava se..." : "65.00"}
             {...register("remaining_amount", { valueAsNumber: true })}
           />
         </div>
@@ -231,6 +275,10 @@ export function PaymentStep({ token }: Props) {
       </div>
 
       <style>{`
+        .act-field--calc { margin-bottom: 12px; }
+        .act-calc-value { font-size: 22px; font-weight: 700; color: #7dcfcf; padding: 6px 0; }
+        .act-label-auto { font-size: 10px; color: rgba(168,213,213,0.35); font-weight: 400; }
+        .act-input--readonly { opacity: 0.6; cursor: default; }
         .act-upload {
           display: flex;
           flex-direction: column;
