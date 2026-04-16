@@ -139,3 +139,29 @@ Firme koje žele kul avanturu za tim — ne "seljanu". Žele nešto drugačije o
 - Luk i strela (sunder) — timski sport na livadi
 - AI bot koji vodi celu komunikaciju i rezerviše direktno
 - Biti najzabavniji i najpozitivniji kamp u regionu — da svi jedva čekaju da se vrate
+
+## Tech Stack (Rezervacioni Sistem)
+
+- **Next.js 14** (App Router) — fullstack
+- **Supabase** — PostgreSQL + Auth (admin login) + Storage (dokazi o uplati)
+- **TanStack Query v5** — data fetching u klijentskim komponentama
+- **Zustand** — klijentski state (multi-step forma, admin filteri), persisted gde treba
+- **Resend + @react-email/components** — transakcioni email (admin notifikacija + vaučer gostu)
+- **@react-pdf/renderer** — server-side PDF vaučer (bez headless Chrome)
+- **shadcn/ui + Tailwind CSS** — UI komponente
+- **Zod + react-hook-form** — validacija forme
+- **21st.dev MCP** — gotove UI komponente
+- **frontend-design skill** — UI/UX kvalitet dizajna
+
+**Arhitekturno pravilo:** Sva biznis logika živi u `lib/services/` — framework-agnostično, 100% reusable za React Native mobilnu aplikaciju u budućnosti. Next.js routes i komponente su tanki omotači.
+
+**Status plaćanja Supabase:** Napraviti projekat na supabase.com i popuniti `.env.local` pre pokretanja.
+
+**Tok rezervacije:**
+1. Admin generiše invite link (admin portal → /admin/links)
+2. Šalje link gostu WhatsApp/Instagram-om
+3. Gost popuni formu (3 koraka) na `/register/[token]`
+4. Admin dobija email sa svim podacima
+5. Admin odobri → sistem generiše PDF vaučer → šalje gostu na email
+
+**Buduće faze:** Kalendar + iFrame za WordPress → Booking.com/Airbnb iCal sync → Monri plaćanje → AI bot

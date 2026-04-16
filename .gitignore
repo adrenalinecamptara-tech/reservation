@@ -21,7 +21,6 @@
 /build
 
 # misc
-.DS_Store
 *.pem
 
 # debug
@@ -30,8 +29,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — never commit secrets
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# fonts — Arial is a licensed Microsoft font, must not be distributed
+public/fonts/Arial*.ttf
+public/fonts/arial*.ttf
+
+# Supabase local dev (if using supabase CLI)
+.supabase/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,13 @@
+diff --git a/node_modules/@react-pdf/textkit/lib/textkit.js b/node_modules/@react-pdf/textkit/lib/textkit.js
+index fb45369..a8f4a03 100644
+--- a/node_modules/@react-pdf/textkit/lib/textkit.js
++++ b/node_modules/@react-pdf/textkit/lib/textkit.js
+@@ -24,7 +24,7 @@ const decomposeUnicode = () => {
+             const run = attributedString.runs[i];
+             const rawString = attributedString.string.slice(run.start, run.end);
+             const runString = isCustomFont(run)
+-                ? rawString.normalize('NFD')
++                ? rawString.normalize('NFC')
+                 : rawString;
+             const fragmentLength = runString.length;
+             runs.push({
