@@ -149,7 +149,7 @@ export function GroupDetailsStep() {
           className="act-input act-select"
           {...register("package_id")}
           onChange={(e) => {
-            setValue("package_id", e.target.value || null);
+            setValue("package_id", e.target.value);
             const pkg = packages.find((p) => p.id === e.target.value);
             setValue("package_type", pkg?.name ?? "");
           }}
