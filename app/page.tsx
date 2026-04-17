@@ -1,65 +1,124 @@
-import Image from "next/image";
-
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div style={{
+      minHeight: "100vh",
+      background: "linear-gradient(160deg, #0a1a1a 0%, #0f2a2a 50%, #0a1a1a 100%)",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      fontFamily: "'DM Sans', system-ui, sans-serif",
+      padding: "24px",
+      textAlign: "center",
+    }}>
+      {/* Logo / Brand */}
+      <div style={{ marginBottom: 48 }}>
+        <div style={{
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: "0.35em",
+          color: "rgba(168,213,213,0.5)",
+          textTransform: "uppercase",
+          marginBottom: 12,
+        }}>
+          Adrenaline Camp Tara
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div style={{
+          fontSize: 42,
+          fontWeight: 800,
+          color: "#e8f5f5",
+          letterSpacing: "-0.02em",
+          lineHeight: 1.1,
+        }}>
+          Vidimo se na reci.
         </div>
-      </main>
+        <div style={{
+          width: 48,
+          height: 2,
+          background: "linear-gradient(90deg, transparent, #3a9090, transparent)",
+          margin: "20px auto 0",
+        }} />
+      </div>
+
+      {/* Message */}
+      <div style={{
+        maxWidth: 480,
+        marginBottom: 48,
+      }}>
+        <p style={{
+          fontSize: 17,
+          color: "rgba(168,213,213,0.75)",
+          lineHeight: 1.7,
+          margin: 0,
+        }}>
+          Online rezervacije su u pripremi. Za sada nas kontaktiraj direktno
+          — odgovaramo brzo.
+        </p>
+      </div>
+
+      {/* Contact cards */}
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        width: "100%",
+        maxWidth: 360,
+        marginBottom: 56,
+      }}>
+        <a
+          href="https://instagram.com/adrenalinetara"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            padding: "16px 20px",
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(62,140,140,0.2)",
+            borderRadius: 12,
+            color: "#e8f5f5",
+            textDecoration: "none",
+            fontSize: 15,
+            fontWeight: 600,
+            transition: "all 0.2s",
+          }}
+        >
+          <span style={{ fontSize: 22 }}>📸</span>
+          <span>@adrenalinetara</span>
+          <span style={{ marginLeft: "auto", color: "rgba(168,213,213,0.35)", fontSize: 13 }}>Instagram</span>
+        </a>
+
+        <a
+          href="tel:+38163315829"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            padding: "16px 20px",
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(62,140,140,0.2)",
+            borderRadius: 12,
+            color: "#e8f5f5",
+            textDecoration: "none",
+            fontSize: 15,
+            fontWeight: 600,
+          }}
+        >
+          <span style={{ fontSize: 22 }}>📞</span>
+          <span>+381 63 315 829</span>
+          <span style={{ marginLeft: "auto", color: "rgba(168,213,213,0.35)", fontSize: 13 }}>Poziv / WhatsApp</span>
+        </a>
+      </div>
+
+      {/* Footer */}
+      <div style={{
+        fontSize: 12,
+        color: "rgba(168,213,213,0.25)",
+        letterSpacing: "0.05em",
+      }}>
+        Bastasi, Bosna i Hercegovina · Reka Drina
+      </div>
     </div>
   );
 }
