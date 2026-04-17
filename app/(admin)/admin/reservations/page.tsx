@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/db/supabase";
 import { redirect } from "next/navigation";
 import { listReservations } from "@/lib/services/reservationService";
+import { DeleteReservationButton } from "@/components/admin/reservations/DeleteReservationButton";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending:   { label: "Na čekanju", color: "#e8a030" },
@@ -93,9 +94,12 @@ export default async function ReservationsPage({ searchParams }: Props) {
                     </td>
                     <td className="adm-voucher-num">{r.voucher_number ?? "—"}</td>
                     <td>
-                      <a href={`/admin/reservations/${r.id}`} className="adm-row-link">
-                        Otvori →
-                      </a>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <a href={`/admin/reservations/${r.id}`} className="adm-row-link">
+                          Otvori →
+                        </a>
+                        <DeleteReservationButton id={r.id} name={`${r.first_name} ${r.last_name}`} />
+                      </div>
                     </td>
                   </tr>
                 );

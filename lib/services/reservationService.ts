@@ -186,7 +186,8 @@ export async function cancelReservation(
 }
 
 /**
- * Get dashboard stats.
+ * Get dashboard stats — cancelled reservations are excluded from all counts
+ * (total, guests, deposits). They remain in the DB as a paper trail only.
  */
 export async function getStats(): Promise<{
   total: number;
@@ -205,12 +206,42 @@ export async function getStats(): Promise<{
   if (error) throw new Error(`Failed to get stats: ${error.message}`);
 
   const rows = data ?? [];
+  const active = rows.filter((r) => r.status !== "cancelled");
+
   return {
-    total: rows.length,
-    pending: rows.filter((r) => r.status === "pending").length,
-    approved: rows.filter((r) => r.status === "approved").length,
+    total: active.length,
+    pending: active.filter((r) => r.status === "pending").length,
+    approved: active.filter((r) => r.status === "approved" || r.status === "modified").length,
     cancelled: rows.filter((r) => r.status === "cancelled").length,
-    totalPeople: rows.reduce((sum, r) => sum + (r.number_of_people ?? 0), 0),
-    totalDeposits: rows.reduce((sum, r) => sum + (Number(r.deposit_amount) ?? 0), 0),
+    totalPeople: active.reduce((sum, r) => sum + (r.number_of_people ?? 0), 0),
+    totalDeposits: active.reduce((sum, r) => sum + (Number(r.deposit_amount) ?? 0), 0),
   };
+}
+
+/**
+ * Delete a reservation and its associated payment proof from storage.
+ */
+export async function deleteReservation(id: string): Promise<void> {
+  const supabase = createServiceClient();
+
+  // Fetch payment_proof_path before deleting
+  const { data: reservation } = await supabase
+    .from("reservations")
+    .select("payment_proof_path")
+    .eq("id", id)
+    .single();
+
+  // Delete storage file if it exists
+  if (reservation?.payment_proof_path) {
+    await supabase.storage
+      .from("payment-proofs")
+      .remove([reservation.payment_proof_path]);
+  }
+
+  const { error } = await supabase
+    .from("reservations")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw new Error(`Failed to delete reservation: ${error.message}`);
 }

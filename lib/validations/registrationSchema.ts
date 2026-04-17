@@ -22,7 +22,7 @@ export const groupDetailsSchema = z.object({
     .max(40, "Maksimum 40 osoba"),
   arrival_date: z.string().min(1, "Odaberite datum dolaska"),
   package_type: z.string().optional(),
-  package_id: z.string().uuid().nullable().optional(),
+  package_id: z.string().uuid({ message: "Odaberite paket" }),
 });
 
 /**

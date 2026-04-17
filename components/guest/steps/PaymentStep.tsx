@@ -1,5 +1,6 @@
 "use client";
 
+import imageCompression from "browser-image-compression";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -88,11 +89,31 @@ export function PaymentStep({ token }: Props) {
 
       setUploadState("uploading");
       try {
+        // Compress images before upload (skip PDF)
+        let fileToUpload: File = file;
+
+        // Build structured filename: Depozit_Ime_Prezime_Datum.ext
+        const ext = file.name.split(".").pop() ?? "jpg";
+        const firstName = (personalInfo.first_name ?? "").replace(/\s+/g, "");
+        const lastName = (personalInfo.last_name ?? "").replace(/\s+/g, "");
+        const idCard = (personalInfo.id_card_number ?? "").replace(/\s+/g, "");
+        const date = (groupDetails as { arrival_date?: string }).arrival_date
+          ? (groupDetails as { arrival_date: string }).arrival_date.replace(/-/g, "")
+          : new Date().toISOString().slice(0, 10).replace(/-/g, "");
+        const structuredName = `Depozit_${firstName}_${lastName}_${idCard}_${date}.${ext}`;
+        if (file.type !== "application/pdf") {
+          fileToUpload = await imageCompression(file, {
+            maxSizeMB: 1,
+            maxWidthOrHeight: 1920,
+            useWebWorker: true,
+          });
+        }
+
         // 1. Get signed upload URL
         const urlRes = await fetch(`/api/upload?token=${token}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileName: file.name, mimeType: file.type }),
+          body: JSON.stringify({ fileName: structuredName, mimeType: fileToUpload.type }),
         });
         if (!urlRes.ok) throw new Error("Greška pri dobijanju upload URL-a");
         const { signedUrl, storagePath } = await urlRes.json();
@@ -100,18 +121,18 @@ export function PaymentStep({ token }: Props) {
         // 2. Upload directly to Supabase Storage
         const uploadRes = await fetch(signedUrl, {
           method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
+          headers: { "Content-Type": fileToUpload.type },
+          body: fileToUpload,
         });
         if (!uploadRes.ok) throw new Error("Greška pri uploadu fajla");
 
         setValue("payment_proof_path", storagePath, { shouldValidate: true });
-        setValue("payment_proof_name", file.name);
+        setValue("payment_proof_name", structuredName);
         setPayment({
           payment_proof_path: storagePath,
-          payment_proof_name: file.name,
+          payment_proof_name: structuredName,
         });
-        setUploadedFileName(file.name);
+        setUploadedFileName(structuredName);
         setUploadState("done");
       } catch (err) {
         console.error(err);

@@ -154,7 +154,7 @@ export function GroupDetailsStep() {
             setValue("package_type", pkg?.name ?? "");
           }}
         >
-          <option value="">Odaberi paket (opciono)</option>
+          <option value="">Odaberi paket</option>
           {packages.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name} — {p.includes}
