@@ -32,8 +32,8 @@ export const paymentSchema = z.object({
   deposit_amount: z
     .number({ error: "Unesite iznos depozita" })
     .positive("Depozit mora biti pozitivan"),
-  total_amount: z.number().positive().optional(),
-  remaining_amount: z.number().positive().optional(),
+  total_amount: z.number().min(0).optional(),
+  remaining_amount: z.number().min(0).optional(),
   payment_proof_path: z.string().min(1, "Molimo uploadujte dokaz o uplati"),
   payment_proof_name: z.string().optional(),
 });

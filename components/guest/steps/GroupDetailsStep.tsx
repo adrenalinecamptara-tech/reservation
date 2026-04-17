@@ -3,14 +3,22 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { groupDetailsSchema, type GroupDetailsValues } from "@/lib/validations/registrationSchema";
+import {
+  groupDetailsSchema,
+  type GroupDetailsValues,
+} from "@/lib/validations/registrationSchema";
 import { useRegistrationStore } from "@/lib/store/registrationStore";
 import { calcTotal, isWeekendArrival } from "@/lib/utils/pricing";
 import type { Package } from "@/lib/db/types";
 
 export function GroupDetailsStep() {
-  const { groupDetails, setGroupDetails, setCalculatedTotal, nextStep, prevStep } =
-    useRegistrationStore();
+  const {
+    groupDetails,
+    setGroupDetails,
+    setCalculatedTotal,
+    nextStep,
+    prevStep,
+  } = useRegistrationStore();
 
   const [packages, setPackages] = useState<Package[]>([]);
 
@@ -55,12 +63,17 @@ export function GroupDetailsStep() {
   const onSubmit = (data: GroupDetailsValues) => {
     // Store package_type (name) for display + historical purposes
     const pkg = packages.find((p) => p.id === data.package_id);
-    const enriched = { ...data, package_type: pkg?.name ?? data.package_type ?? "" };
+    const enriched = {
+      ...data,
+      package_type: pkg?.name ?? data.package_type ?? "",
+    };
     setGroupDetails(enriched);
 
     // Pre-calculate total for PaymentStep
     if (pkg && data.number_of_people && data.arrival_date) {
-      setCalculatedTotal(calcTotal(pkg, data.number_of_people, data.arrival_date));
+      setCalculatedTotal(
+        calcTotal(pkg, data.number_of_people, data.arrival_date),
+      );
     } else {
       setCalculatedTotal(null);
     }
@@ -71,9 +84,9 @@ export function GroupDetailsStep() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <p className="act-hint">
-        Datum dolaska je obično <strong>petak ili subota</strong>. Polazak kući je u
-        <strong> nedelju ili ponedeljak</strong> nakon doručka. Komunicirajte tačan
-        termin sa kamp menadžerom pre ove prijave.
+        Datum dolaska je obično <strong>petak ili subota</strong>. Polazak kući
+        je u<strong> nedelju ili ponedeljak</strong> nakon doručka.
+        Komunicirajte tačan termin sa kamp menadžerom pre ove prijave.
       </p>
 
       <div className="act-field">
@@ -93,7 +106,9 @@ export function GroupDetailsStep() {
         )}
         {isWeekend !== null && (
           <p className="act-price-note">
-            {isWeekend ? "🟡 Vikend termin — primjenjuje se vikend cijena" : "🟢 Radni dan — primjenjuje se cijena radnog dana"}
+            {isWeekend
+              ? "🟡 Vikend termin - primenjuje se vikend cena"
+              : "🟢 Radni dan — primenjuje se cena radnog dana"}
           </p>
         )}
       </div>
@@ -143,15 +158,23 @@ export function GroupDetailsStep() {
       {selectedPkg && (
         <div className="act-price-card">
           <div className="act-price-row">
-            <span className="act-price-label">Cijena po osobi</span>
+            <span className="act-price-label">Cena po osobi</span>
             <span className="act-price-val">
-              {isWeekend ? selectedPkg.weekend_price : selectedPkg.weekday_price} €
-              <span className="act-price-type">({isWeekend ? "vikend" : "radni dan"})</span>
+              {isWeekend
+                ? selectedPkg.weekend_price
+                : selectedPkg.weekday_price}{" "}
+              €
+              <span className="act-price-type">
+                ({isWeekend ? "vikend" : "radni dan"})
+              </span>
             </span>
           </div>
           {liveTotal !== null && (
             <div className="act-price-row act-price-row--total">
-              <span className="act-price-label">Ukupno ({watchedPeople} {watchedPeople === 1 ? "osoba" : "osoba"})</span>
+              <span className="act-price-label">
+                Ukupno ({watchedPeople}{" "}
+                {watchedPeople === 1 ? "osoba" : "osoba"})
+              </span>
               <span className="act-price-total">{liveTotal} €</span>
             </div>
           )}

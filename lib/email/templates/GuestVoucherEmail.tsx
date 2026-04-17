@@ -5,6 +5,7 @@ import {
   Heading,
   Hr,
   Html,
+  Link,
   Preview,
   Section,
   Text,
@@ -146,7 +147,10 @@ export function GuestVoucherEmail({ reservation, isUpdate = false }: Props) {
               <br />
               📧 info@adrenalinetara.com
               <br />
-              📍 9R74+WF4, Bastasi, Bosna i Hercegovina
+              📍{" "}
+              <Link href="https://maps.app.goo.gl/TgCyfepwZ3zocam88" style={{ color: "#0ea5e9", textDecoration: "underline" }}>
+                9R74+WF4, Bastasi, Bosna i Hercegovina
+              </Link>
             </Text>
           </Section>
 

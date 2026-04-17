@@ -33,12 +33,12 @@ export default async function VerifyPage({ params }: Props) {
     redirect(`/worker/login?redirectTo=/verify/${voucherNumber}`);
   }
 
-  // Fetch reservation by voucher number (service client to bypass RLS)
+  // Fetch reservation by verify_code (service client to bypass RLS)
   const db = createServiceClient();
   const { data: reservation, error } = await db
     .from("reservations")
     .select("*, cabin:cabins(*)")
-    .eq("voucher_number", voucherNumber)
+    .eq("verify_code", voucherNumber)
     .single<Reservation>();
 
   const found = !error && !!reservation;

@@ -179,9 +179,21 @@ export function PaymentStep({ token }: Props) {
             type="number"
             step="0.01"
             min="0"
+            max={hasPackage && prefilledTotal != null ? prefilledTotal : undefined}
             className={`act-input ${errors.deposit_amount ? "act-input--error" : ""}`}
             placeholder="25.00"
-            {...register("deposit_amount", { valueAsNumber: true })}
+            {...register("deposit_amount", {
+              valueAsNumber: true,
+              onChange: (e) => {
+                if (hasPackage && prefilledTotal != null) {
+                  const raw = parseFloat(e.target.value);
+                  if (!isNaN(raw) && raw > prefilledTotal) {
+                    e.target.value = String(prefilledTotal);
+                    setValue("deposit_amount", prefilledTotal, { shouldValidate: true });
+                  }
+                }
+              },
+            })}
           />
           {errors.deposit_amount && (
             <p className="act-error">{errors.deposit_amount.message}</p>
@@ -198,7 +210,7 @@ export function PaymentStep({ token }: Props) {
             step="0.01"
             min="0"
             readOnly={hasPackage && prefilledTotal != null}
-            className={`act-input ${hasPackage ? "act-input--readonly" : ""} ${errors.remaining_amount ? "act-input--error" : ""}`}
+            className={`act-input ${hasPackage ? "act-input--readonly" : ""} ${errors.remaining_amount && !(hasPackage && watch("remaining_amount") === 0) ? "act-input--error" : ""}`}
             placeholder={hasPackage ? "Izračunava se..." : "65.00"}
             {...register("remaining_amount", { valueAsNumber: true })}
           />

@@ -11,13 +11,22 @@ import path from "path";
 import type { Reservation } from "@/lib/db/types";
 
 // Background image path (server-side absolute path)
-const BG_PATH = path.join(process.cwd(), "public/voucher-assets/voucher-background.png");
+const BG_PATH = path.join(
+  process.cwd(),
+  "public/voucher-assets/voucher-background.png",
+);
 
 Font.register({
   family: "Arial",
   fonts: [
-    { src: path.join(process.cwd(), "public/fonts/Arial-Regular.ttf"), fontWeight: "normal" },
-    { src: path.join(process.cwd(), "public/fonts/Arial-Bold.ttf"), fontWeight: "bold" },
+    {
+      src: path.join(process.cwd(), "public/fonts/Arial-Regular.ttf"),
+      fontWeight: "normal",
+    },
+    {
+      src: path.join(process.cwd(), "public/fonts/Arial-Bold.ttf"),
+      fontWeight: "bold",
+    },
   ],
 });
 
@@ -70,44 +79,55 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#1e4d4d",
   },
-  // Presale price
+  // Deposit paid
   presale: {
     position: "absolute",
-    top: 415,
+    top: 408,
     left: 0,
     right: 0,
     textAlign: "center",
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "bold",
     color: "#c41e3a",
+  },
+  // Remaining at arrival
+  remaining: {
+    position: "absolute",
+    top: 432,
+    left: 0,
+    right: 0,
+    textAlign: "center",
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1e4d4d",
   },
   // Included
   included: {
     position: "absolute",
-    top: 448,
+    top: 458,
     left: 80,
     right: 80,
     textAlign: "center",
-    fontSize: 14,
+    fontSize: 13,
     color: "#1e4d4d",
   },
   // Form fields container
   fields: {
     position: "absolute",
-    top: 490,
+    top: 492,
     left: 60,
     right: 60,
   },
   fieldRow: {
     flexDirection: "row",
     alignItems: "flex-end",
-    marginBottom: 10,
+    marginBottom: 8,
   },
   fieldLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "bold",
     color: "#1e4d4d",
-    width: 160,
+    width: 175,
   },
   fieldValueContainer: {
     flex: 1,
@@ -116,7 +136,7 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
   },
   fieldValue: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#1e4d4d",
   },
   // Footer
@@ -157,6 +177,7 @@ const styles = StyleSheet.create({
 interface Props {
   reservation: Reservation;
   qrCodeDataUrl: string;
+  packageIncludes?: string;
 }
 
 // NFC normalization ensures precomposed glyphs (Č, Š, Ž...) are used
@@ -164,7 +185,11 @@ interface Props {
 // and copy-paste in @react-pdf/renderer / fontkit / pdfkit.
 const n = (s: string) => s.normalize("NFC");
 
-export function VoucherDocument({ reservation, qrCodeDataUrl }: Props) {
+export function VoucherDocument({
+  reservation,
+  qrCodeDataUrl,
+  packageIncludes,
+}: Props) {
   const fullName = n(`${reservation.first_name} ${reservation.last_name}`);
 
   // Format date nicely
@@ -179,7 +204,7 @@ export function VoucherDocument({ reservation, qrCodeDataUrl }: Props) {
   // Validity: arrival date + 1 day (can be adjusted)
   const validUntil = reservation.arrival_date
     ? new Date(
-        new Date(reservation.arrival_date).getTime() + 3 * 24 * 60 * 60 * 1000
+        new Date(reservation.arrival_date).getTime() + 3 * 24 * 60 * 60 * 1000,
       ).toLocaleDateString("sr-Latn-RS", {
         day: "2-digit",
         month: "2-digit",
@@ -205,14 +230,27 @@ export function VoucherDocument({ reservation, qrCodeDataUrl }: Props) {
         {/* Activity */}
         <Text style={styles.activity}>{n(packageLabel)}</Text>
 
-        {/* Price info */}
+        {/* Deposit paid */}
         <Text style={styles.presale}>
-          {n(`Depozit plaćen: ${reservation.deposit_amount} ${reservation.currency}`)}
+          {n(
+            `Depozit plaćen: ${reservation.deposit_amount} ${reservation.currency}`,
+          )}
         </Text>
+
+        {/* Remaining at arrival */}
+        {reservation.remaining_amount != null && (
+          <Text style={styles.remaining}>
+            {n(
+              `Plaćanje pri dolasku: ${reservation.remaining_amount} ${reservation.currency}`,
+            )}
+          </Text>
+        )}
 
         {/* Included */}
         <Text style={styles.included}>
-          {n("Uključeno: Rafting, 2 noćenja, 2 doručka, 1 ručak, žurka i bend")}
+          {n(
+            `Uključeno: ${packageIncludes ?? "Rafting, 2 noćenja, 2 doručka, 1 ručak, žurka i bend"}`,
+          )}
         </Text>
 
         {/* Form fields */}
@@ -220,13 +258,24 @@ export function VoucherDocument({ reservation, qrCodeDataUrl }: Props) {
           <FieldRow label="Email:" value={reservation.email} />
           <FieldRow label={n("Broj telefona:")} value={reservation.phone} />
           <FieldRow label={n("Ime i prezime:")} value={fullName} />
-          <FieldRow label="JMBG:" value={reservation.id_card_number} />
+          <FieldRow
+            label={n("Br. lične karte/pasoša:")}
+            value={reservation.id_card_number}
+          />
           <FieldRow
             label={n("Broj vaučera:")}
+            value={n(reservation.verify_code ?? "")}
+          />
+          <FieldRow
+            label={n("Ref. broj:")}
             value={n(reservation.voucher_number ?? "")}
           />
-          <FieldRow label={n("Datum izdavanja:")} value={arrivalDate} />
+          <FieldRow label={n("Datum dolaska:")} value={arrivalDate} />
           <FieldRow label={n("Važi do:")} value={validUntil} />
+          <FieldRow
+            label={n("Broj ljudi:")}
+            value={String(reservation.number_of_people)}
+          />
           <FieldRow label={n("Kamp menadžer:")} value={n("Milan Popović")} />
         </View>
 
@@ -254,7 +303,9 @@ export function VoucherDocument({ reservation, qrCodeDataUrl }: Props) {
               </View>
               <View style={styles.footerRow}>
                 <Text style={styles.footerText}>Banka: </Text>
-                <Text style={styles.footerBold}>NOVA BANKA A.D. BANJA LUKA</Text>
+                <Text style={styles.footerBold}>
+                  NOVA BANKA A.D. BANJA LUKA
+                </Text>
               </View>
             </View>
             <Image src={qrCodeDataUrl} style={styles.qrCode} />
