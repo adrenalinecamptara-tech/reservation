@@ -67,6 +67,10 @@ export function GuestVoucherEmail({ reservation, isUpdate = false }: Props) {
             </Text>
             <Text style={dataRow}>
               <span style={label}>Broj vaučera:</span>{" "}
+              <strong>{reservation.verify_code}</strong>
+            </Text>
+            <Text style={dataRow}>
+              <span style={label}>Ref. broj:</span>{" "}
               <strong>{reservation.voucher_number}</strong>
             </Text>
             <Text style={dataRow}>

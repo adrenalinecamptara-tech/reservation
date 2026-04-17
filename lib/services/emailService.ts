@@ -9,7 +9,8 @@ function getResend(): Resend {
 }
 
 const FROM = process.env.RESEND_FROM_EMAIL ?? "rezervacije@adrenalinetara.com";
-const ADMIN_EMAIL = process.env.RESEND_ADMIN_EMAIL ?? "milan@adrenalinetara.com";
+const ADMIN_EMAIL =
+  process.env.RESEND_ADMIN_EMAIL ?? "milan@adrenalinetara.com";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 /**
@@ -23,9 +24,8 @@ export async function notifyAdmin(reservation: Reservation): Promise<void> {
     resendKeySet: !!process.env.RESEND_API_KEY,
   });
 
-  const { AdminNotificationEmail } = await import(
-    "@/lib/email/templates/AdminNotificationEmail"
-  );
+  const { AdminNotificationEmail } =
+    await import("@/lib/email/templates/AdminNotificationEmail");
   const React = await import("react");
 
   const result = await getResend().emails.send({
@@ -46,7 +46,7 @@ export async function notifyAdmin(reservation: Reservation): Promise<void> {
  */
 export async function sendVoucherToGuest(
   reservation: Reservation,
-  pdfBuffer: Buffer
+  pdfBuffer: Buffer,
 ): Promise<void> {
   console.log("[emailService] sendVoucherToGuest start", {
     from: FROM,
@@ -57,15 +57,14 @@ export async function sendVoucherToGuest(
     resendKeySet: !!process.env.RESEND_API_KEY,
   });
 
-  const { GuestVoucherEmail } = await import(
-    "@/lib/email/templates/GuestVoucherEmail"
-  );
+  const { GuestVoucherEmail } =
+    await import("@/lib/email/templates/GuestVoucherEmail");
   const React = await import("react");
 
   const result = await getResend().emails.send({
     from: FROM,
     to: reservation.email,
-    subject: `Vaš vaučer — Adrenaline Camp Tara (${reservation.voucher_number})`,
+    subject: `Vaš vaučer - Adrenaline Camp Tara (${reservation.voucher_number})`,
     react: React.createElement(GuestVoucherEmail, { reservation }),
     attachments: [
       {
@@ -75,7 +74,10 @@ export async function sendVoucherToGuest(
     ],
   });
 
-  console.log("[emailService] sendVoucherToGuest result", JSON.stringify(result));
+  console.log(
+    "[emailService] sendVoucherToGuest result",
+    JSON.stringify(result),
+  );
 }
 
 /**
@@ -83,7 +85,7 @@ export async function sendVoucherToGuest(
  */
 export async function sendUpdatedVoucherToGuest(
   reservation: Reservation,
-  pdfBuffer: Buffer
+  pdfBuffer: Buffer,
 ): Promise<void> {
   console.log("[emailService] sendUpdatedVoucherToGuest start", {
     from: FROM,
@@ -93,16 +95,18 @@ export async function sendUpdatedVoucherToGuest(
     resendKeySet: !!process.env.RESEND_API_KEY,
   });
 
-  const { GuestVoucherEmail } = await import(
-    "@/lib/email/templates/GuestVoucherEmail"
-  );
+  const { GuestVoucherEmail } =
+    await import("@/lib/email/templates/GuestVoucherEmail");
   const React = await import("react");
 
   const result = await getResend().emails.send({
     from: FROM,
     to: reservation.email,
     subject: `Izmjena rezervacije — Adrenaline Camp Tara (${reservation.voucher_number})`,
-    react: React.createElement(GuestVoucherEmail, { reservation, isUpdate: true }),
+    react: React.createElement(GuestVoucherEmail, {
+      reservation,
+      isUpdate: true,
+    }),
     attachments: [
       {
         filename: `vaucer-${reservation.voucher_number}.pdf`,
@@ -111,5 +115,8 @@ export async function sendUpdatedVoucherToGuest(
     ],
   });
 
-  console.log("[emailService] sendUpdatedVoucherToGuest result", JSON.stringify(result));
+  console.log(
+    "[emailService] sendUpdatedVoucherToGuest result",
+    JSON.stringify(result),
+  );
 }

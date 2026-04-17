@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
   // Title — VAUČER
   title: {
     position: "absolute",
-    top: 230,
+    top: 205,
     left: 0,
     right: 0,
     textAlign: "center",
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   // Subtitle — PROMOCIJA MAJ 2026
   subtitle: {
     position: "absolute",
-    top: 320,
+    top: 295,
     left: 0,
     right: 0,
     textAlign: "center",
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   // Activity
   activity: {
     position: "absolute",
-    top: 375,
+    top: 350,
     left: 0,
     right: 0,
     textAlign: "center",
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   // Deposit paid
   presale: {
     position: "absolute",
-    top: 408,
+    top: 383,
     left: 0,
     right: 0,
     textAlign: "center",
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   // Remaining at arrival
   remaining: {
     position: "absolute",
-    top: 432,
+    top: 407,
     left: 0,
     right: 0,
     textAlign: "center",
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   // Included
   included: {
     position: "absolute",
-    top: 458,
+    top: 433,
     left: 80,
     right: 80,
     textAlign: "center",
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   // Form fields container
   fields: {
     position: "absolute",
-    top: 492,
+    top: 467,
     left: 60,
     right: 60,
   },
