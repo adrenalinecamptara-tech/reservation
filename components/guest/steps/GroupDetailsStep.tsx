@@ -40,7 +40,7 @@ export function GroupDetailsStep() {
     defaultValues: {
       ...groupDetails,
       number_of_people: (groupDetails.number_of_people as number) || undefined,
-      package_id: groupDetails.package_id ?? null,
+      package_id: groupDetails.package_id ?? undefined,
       package_type: groupDetails.package_type ?? "",
     },
   });
