@@ -52,9 +52,16 @@ export function GroupDetailsStep() {
   // Resolve selected package object
   const selectedPkg = packages.find((p) => p.id === watchedPackageId) ?? null;
 
-  // Live price preview
+  // Custom package = no fixed price (both prices are 0)
+  const isCustomPkg = !!(
+    selectedPkg &&
+    selectedPkg.weekend_price === 0 &&
+    selectedPkg.weekday_price === 0
+  );
+
+  // Live price preview (not applicable for custom packages)
   const liveTotal =
-    selectedPkg && watchedPeople >= 1 && watchedDate
+    selectedPkg && !isCustomPkg && watchedPeople >= 1 && watchedDate
       ? calcTotal(selectedPkg, watchedPeople, watchedDate)
       : null;
 
@@ -69,8 +76,10 @@ export function GroupDetailsStep() {
     };
     setGroupDetails(enriched);
 
-    // Pre-calculate total for PaymentStep
-    if (pkg && data.number_of_people && data.arrival_date) {
+    // Pre-calculate total for PaymentStep (skip for custom packages)
+    const pkgIsCustom =
+      pkg && pkg.weekend_price === 0 && pkg.weekday_price === 0;
+    if (pkg && !pkgIsCustom && data.number_of_people && data.arrival_date) {
       setCalculatedTotal(
         calcTotal(pkg, data.number_of_people, data.arrival_date),
       );
@@ -154,8 +163,8 @@ export function GroupDetailsStep() {
         </select>
       </div>
 
-      {/* Price preview */}
-      {selectedPkg && (
+      {/* Price preview — hidden for custom packages */}
+      {selectedPkg && !isCustomPkg && (
         <div className="act-price-card">
           <div className="act-price-row">
             <span className="act-price-label">Cena po osobi</span>

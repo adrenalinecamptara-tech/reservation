@@ -26,6 +26,8 @@ export function PaymentStep({ token }: Props) {
   const prefilledTotal = payment.total_amount ?? null;
   const hasPackage = !!(groupDetails as { package_id?: string | null })
     .package_id;
+  // Custom package = package selected but no pre-calculated total (prices are 0)
+  const isCustomPackage = hasPackage && prefilledTotal === null;
 
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [uploadedFileName, setUploadedFileName] = useState<string>(
@@ -51,14 +53,17 @@ export function PaymentStep({ token }: Props) {
   });
 
   const watchedDeposit = watch("deposit_amount");
+  const watchedTotal = watch("total_amount");
 
-  // Auto-calculate remaining when package selected
+  // Auto-calculate remaining:
+  // - standard package: uses pre-calculated total from store
+  // - custom package: uses manually entered total_amount
   useEffect(() => {
-    if (hasPackage && prefilledTotal != null && watchedDeposit > 0) {
-      const remaining = calcRemaining(prefilledTotal, watchedDeposit);
-      setValue("remaining_amount", remaining);
+    const total = isCustomPackage ? watchedTotal : prefilledTotal;
+    if (hasPackage && total != null && total > 0 && watchedDeposit > 0) {
+      setValue("remaining_amount", calcRemaining(total, watchedDeposit));
     }
-  }, [watchedDeposit, prefilledTotal, hasPackage, setValue]);
+  }, [watchedDeposit, watchedTotal, prefilledTotal, hasPackage, isCustomPackage, setValue]);
 
   // Handle file upload to Supabase Storage via signed URL
   const handleFileChange = useCallback(
@@ -156,8 +161,26 @@ export function PaymentStep({ token }: Props) {
         (slika ili PDF). Ostatak plaćate pri dolasku u kamp.
       </p>
 
-      {/* Total — read-only if pre-calculated from package */}
-      {hasPackage && prefilledTotal != null ? (
+      {/* Total — read-only for standard packages, editable for custom */}
+      {isCustomPackage ? (
+        <div className="act-field">
+          <label className="act-label" htmlFor="total_amount">
+            Dogovorena ukupna cijena (€)
+          </label>
+          <input
+            id="total_amount"
+            type="number"
+            step="0.01"
+            min="0"
+            className={`act-input ${errors.total_amount ? "act-input--error" : ""}`}
+            placeholder="0.00"
+            {...register("total_amount", { valueAsNumber: true })}
+          />
+          {errors.total_amount && (
+            <p className="act-error">{errors.total_amount.message}</p>
+          )}
+        </div>
+      ) : hasPackage && prefilledTotal != null ? (
         <div className="act-field act-field--calc">
           <label className="act-label">Ukupna cijena (izračunato)</label>
           <div className="act-calc-value">{prefilledTotal} €</div>
@@ -179,13 +202,13 @@ export function PaymentStep({ token }: Props) {
             type="number"
             step="0.01"
             min="0"
-            max={hasPackage && prefilledTotal != null ? prefilledTotal : undefined}
+            max={hasPackage && !isCustomPackage && prefilledTotal != null ? prefilledTotal : undefined}
             className={`act-input ${errors.deposit_amount ? "act-input--error" : ""}`}
             placeholder="25.00"
             {...register("deposit_amount", {
               valueAsNumber: true,
               onChange: (e) => {
-                if (hasPackage && prefilledTotal != null) {
+                if (hasPackage && !isCustomPackage && prefilledTotal != null) {
                   const raw = parseFloat(e.target.value);
                   if (!isNaN(raw) && raw > prefilledTotal) {
                     e.target.value = String(prefilledTotal);
