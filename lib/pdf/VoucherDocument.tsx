@@ -17,14 +17,14 @@ const BG_PATH = path.join(
 );
 
 Font.register({
-  family: "Arial",
+  family: "NotoSans",
   fonts: [
     {
-      src: path.join(process.cwd(), "public/fonts/Arial-Regular.ttf"),
+      src: path.join(process.cwd(), "public/fonts/NotoSans-Regular.ttf"),
       fontWeight: "normal",
     },
     {
-      src: path.join(process.cwd(), "public/fonts/Arial-Bold.ttf"),
+      src: path.join(process.cwd(), "public/fonts/NotoSans-Bold.ttf"),
       fontWeight: "bold",
     },
   ],
@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
     width: "210mm",
     height: "310mm",
     position: "relative",
-    fontFamily: "Arial",
+    fontFamily: "NotoSans",
   },
   bg: {
     position: "absolute",

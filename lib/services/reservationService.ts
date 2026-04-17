@@ -95,21 +95,26 @@ export async function approveReservation(
 ): Promise<Reservation> {
   const supabase = createServiceClient();
 
-  // Update status to approved
+  // Fetch reservation first — allow re-approving if a previous attempt partially failed
+  const existing = await getReservation(id);
+  if (existing.status === "cancelled") {
+    throw new Error("Otkazana rezervacija ne može biti odobrena.");
+  }
+
+  // Update status to approved (idempotent — works even if already approved)
   const { data: reservation, error } = await supabase
     .from("reservations")
     .update({
       status: "approved",
       approved_by: approvedBy,
-      approved_at: new Date().toISOString(),
+      approved_at: existing.approved_at ?? new Date().toISOString(),
     })
     .eq("id", id)
-    .eq("status", "pending") // Only approve pending reservations
     .select("*, cabin:cabins(*)")
     .single();
 
   if (error || !reservation)
-    throw new Error(`Failed to approve reservation: ${error?.message ?? "not found or already processed"}`);
+    throw new Error(`Failed to approve reservation: ${error?.message ?? "not found"}`);
 
   // Generate PDF voucher
   const pdfBuffer = await generateVoucher(reservation);
