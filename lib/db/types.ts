@@ -76,6 +76,8 @@ export interface Reservation {
   cancellation_reason: string | null;
   // Voucher
   voucher_sent_at: string | null;
+  paid_at: string | null;
+  paid_by: string | null;
   voucher_number: string | null;   // ACT-YYYY-NNNN (sequential, admin reference)
   verify_code: string | null;      // random 10-digit, used for QR + /verify URL
   // Timestamps
@@ -132,6 +134,8 @@ export interface ReservationUpdate {
   cancelled_at?: string | null;
   cancellation_reason?: string | null;
   voucher_sent_at?: string | null;
+  paid_at?: string | null;
+  paid_by?: string | null;
 }
 
 // Minimal Database type wrapper for Supabase client generics

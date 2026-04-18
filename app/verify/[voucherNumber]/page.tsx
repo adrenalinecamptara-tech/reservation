@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient, createServiceClient } from "@/lib/db/supabase";
 import type { Reservation } from "@/lib/db/types";
+import { ConfirmPaymentButton } from "@/components/verify/ConfirmPaymentButton";
 
 interface Props {
   params: Promise<{ voucherNumber: string }>;
@@ -89,16 +90,32 @@ export default async function VerifyPage({ params }: Props) {
             </div>
           </div>
           {found && (
-            <div style={{
-              background: reservation.status === "approved" ? "rgba(21,128,61,0.2)" : "rgba(180,83,9,0.2)",
-              border: `1px solid ${STATUS_COLOR[reservation.status] ?? "#666"}`,
-              borderRadius: 8,
-              padding: "8px 16px",
-              color: STATUS_COLOR[reservation.status] ?? "#666",
-              fontSize: 13,
-              fontWeight: 700,
-            }}>
-              {STATUS_LABEL[reservation.status] ?? reservation.status}
+            <div style={{ display: "flex", flexDirection: "column" as const, gap: 6, alignItems: "flex-end" }}>
+              <div style={{
+                background: reservation.status === "approved" ? "rgba(21,128,61,0.2)" : "rgba(180,83,9,0.2)",
+                border: `1px solid ${STATUS_COLOR[reservation.status] ?? "#666"}`,
+                borderRadius: 8,
+                padding: "8px 16px",
+                color: STATUS_COLOR[reservation.status] ?? "#666",
+                fontSize: 13,
+                fontWeight: 700,
+              }}>
+                {STATUS_LABEL[reservation.status] ?? reservation.status}
+              </div>
+              {reservation.paid_at && (
+                <div style={{
+                  background: "rgba(22,163,74,0.2)",
+                  border: "1px solid #16a34a",
+                  borderRadius: 8,
+                  padding: "6px 12px",
+                  color: "#16a34a",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  letterSpacing: "0.05em",
+                }}>
+                  ✓ PLAĆENO
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -149,7 +166,21 @@ export default async function VerifyPage({ params }: Props) {
                 <Row label="Ukupno" value={`${reservation.total_amount} ${reservation.currency}`} />
               )}
               {reservation.remaining_amount != null && (
-                <Row label="Ostatak za platiti" value={`${reservation.remaining_amount} ${reservation.currency}`} highlight />
+                <Row label="Ostatak za platiti" value={`${reservation.remaining_amount} ${reservation.currency}`} highlight={!reservation.paid_at} />
+              )}
+              {reservation.paid_at && (
+                <Row label="Plaćeno" value={formatDateTime(reservation.paid_at)} />
+              )}
+              {reservation.paid_by && (
+                <Row label="Naplatio" value={reservation.paid_by} />
+              )}
+              {!reservation.paid_at && reservation.status !== "cancelled" && (
+                <ConfirmPaymentButton
+                  reservationId={reservation.id}
+                  amount={reservation.remaining_amount ?? reservation.total_amount}
+                  currency={reservation.currency}
+                  guestName={`${reservation.first_name} ${reservation.last_name}`}
+                />
               )}
             </Section>
 

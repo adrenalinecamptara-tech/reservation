@@ -39,6 +39,11 @@ export default async function AdminDashboard() {
           color="#3a9090"
         />
         <StatCard
+          label={`Naplaćeno (${stats.paid})`}
+          value={`${stats.totalRevenue.toFixed(0)} €`}
+          color="#3aaa70"
+        />
+        <StatCard
           label="Kapacitet (40 ležaja)"
           value={`${stats.totalPeople}/40`}
           color={stats.totalPeople >= 36 ? "#c41e3a" : "#3a9090"}
@@ -73,6 +78,10 @@ export default async function AdminDashboard() {
         <a href="/admin/reservations" className="adm-dash-link">
           <span>📋</span>
           <span>Sve rezervacije</span>
+        </a>
+        <a href="/admin/calendar" className="adm-dash-link">
+          <span>📅</span>
+          <span>Kalendar</span>
         </a>
         <a href="/admin/links" className="adm-dash-link">
           <span>🔗</span>
@@ -109,12 +118,13 @@ export default async function AdminDashboard() {
         .adm-pending-meta { display: flex; gap: 12px; font-size: 13px; color: rgba(168,213,213,0.6); flex-wrap: wrap; flex: 1; }
         .adm-pending-action { font-size: 13px; color: rgba(168,213,213,0.5); margin-left: auto; white-space: nowrap; }
 
-        .adm-dash-links { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .adm-dash-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
         .adm-dash-link { display: flex; align-items: center; gap: 12px; padding: 18px 20px; background: rgba(10,25,25,0.8); border: 1px solid rgba(62,140,140,0.15); border-radius: 12px; text-decoration: none; color: rgba(168,213,213,0.7); font-size: 14px; font-weight: 500; transition: all 0.2s; }
         .adm-dash-link:hover { border-color: rgba(62,140,140,0.35); color: #e8f5f5; }
         .adm-dash-link span:first-child { font-size: 20px; }
 
         @media (max-width: 600px) { .adm-dash-links { grid-template-columns: 1fr; } }
+        @media (max-width: 800px) and (min-width: 601px) { .adm-dash-links { grid-template-columns: 1fr 1fr; } }
       `}</style>
     </div>
   );

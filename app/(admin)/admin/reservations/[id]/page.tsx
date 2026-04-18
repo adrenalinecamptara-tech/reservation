@@ -84,6 +84,14 @@ export default async function ReservationDetailPage({ params }: Props) {
                 value={`${reservation.remaining_amount} ${reservation.currency}`}
               />
             )}
+            {reservation.paid_at && (
+              <>
+                <DataRow label="Plaćeno u kampu" value={new Date(reservation.paid_at).toLocaleString("sr-Latn-RS")} />
+                {reservation.paid_by && (
+                  <DataRow label="Naplatio" value={reservation.paid_by} />
+                )}
+              </>
+            )}
             {proofUrl && (
               <div className="adm-proof-link">
                 <a href={proofUrl} target="_blank" rel="noopener noreferrer" className="adm-link">

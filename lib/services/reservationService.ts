@@ -191,35 +191,66 @@ export async function cancelReservation(
 }
 
 /**
+ * Confirm in-person payment by a worker scanning the voucher. Idempotent.
+ */
+export async function confirmPayment(id: string, paidBy: string): Promise<Reservation> {
+  const supabase = createServiceClient();
+  const existing = await getReservation(id);
+  if (existing.status === "cancelled") {
+    throw new Error("Otkazana rezervacija ne može biti naplaćena.");
+  }
+  const { data, error } = await supabase
+    .from("reservations")
+    .update({
+      paid_at: existing.paid_at ?? new Date().toISOString(),
+      paid_by: existing.paid_by ?? paidBy,
+    })
+    .eq("id", id)
+    .select("*, cabin:cabins(*)")
+    .single();
+  if (error || !data) throw new Error(`Failed to confirm payment: ${error?.message}`);
+  return data;
+}
+
+/**
  * Get dashboard stats — cancelled reservations are excluded from all counts
  * (total, guests, deposits). They remain in the DB as a paper trail only.
+ * `totalRevenue` counts full total_amount only for reservations marked paid.
  */
 export async function getStats(): Promise<{
   total: number;
   pending: number;
   approved: number;
   cancelled: number;
+  paid: number;
   totalPeople: number;
   totalDeposits: number;
+  totalRevenue: number;
 }> {
   const supabase = createServiceClient();
 
   const { data, error } = await supabase
     .from("reservations")
-    .select("status, number_of_people, deposit_amount");
+    .select("status, number_of_people, deposit_amount, total_amount, paid_at");
 
   if (error) throw new Error(`Failed to get stats: ${error.message}`);
 
   const rows = data ?? [];
   const active = rows.filter((r) => r.status !== "cancelled");
+  const paidRows = active.filter((r) => r.paid_at);
 
   return {
     total: active.length,
     pending: active.filter((r) => r.status === "pending").length,
     approved: active.filter((r) => r.status === "approved" || r.status === "modified").length,
     cancelled: rows.filter((r) => r.status === "cancelled").length,
+    paid: paidRows.length,
     totalPeople: active.reduce((sum, r) => sum + (r.number_of_people ?? 0), 0),
     totalDeposits: active.reduce((sum, r) => sum + (Number(r.deposit_amount) ?? 0), 0),
+    totalRevenue: paidRows.reduce(
+      (sum, r) => sum + (Number(r.total_amount ?? r.deposit_amount) ?? 0),
+      0
+    ),
   };
 }
 

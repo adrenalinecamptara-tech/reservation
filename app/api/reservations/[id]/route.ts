@@ -5,6 +5,7 @@ import {
   updateReservation,
   cancelReservation,
 } from "@/lib/services/reservationService";
+import { getAvailableUnits, deriveDeparture } from "@/lib/services/calendarService";
 
 async function getAdmin() {
   const supabase = await createClient();
@@ -29,6 +30,25 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
+
+  if (body.cabin_id && body.floor) {
+    const current = await getReservation(id);
+    const arrival = body.arrival_date ?? current.arrival_date;
+    const departureRaw = body.departure_date ?? current.departure_date;
+    const pkgType = body.package_type ?? current.package_type;
+    const departure = deriveDeparture(arrival, departureRaw, pkgType);
+    const units = await getAvailableUnits(arrival, departure, id);
+    const target = units.find((u) => u.cabin_id === body.cabin_id && u.floor === body.floor);
+    if (target && !target.available && target.conflict) {
+      return NextResponse.json(
+        {
+          error: `Jedinica je zauzeta (${target.conflict.first_name} ${target.conflict.last_name}, ${target.conflict.arrival} → ${target.conflict.departure}). Izaberi drugu.`,
+        },
+        { status: 409 }
+      );
+    }
+  }
+
   const reservation = await updateReservation(id, body);
   return NextResponse.json(reservation);
 }

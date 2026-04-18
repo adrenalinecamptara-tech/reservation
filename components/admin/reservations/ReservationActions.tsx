@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Reservation, Cabin, Package } from "@/lib/db/types";
 import { calcTotal, calcRemaining } from "@/lib/utils/pricing";
@@ -8,6 +8,33 @@ import { calcTotal, calcRemaining } from "@/lib/utils/pricing";
 interface Props {
   reservation: Reservation;
   cabins: Cabin[];
+}
+
+interface AvailableUnit {
+  cabin_id: string;
+  cabin_name: string;
+  floor: "ground" | "upper";
+  available: boolean;
+  conflict?: { id: string; first_name: string; last_name: string; arrival: string; departure: string };
+}
+
+function addDaysClient(iso: string, n: number): string {
+  const d = new Date(iso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function deriveDepartureClient(arrival: string, departure: string | null, packageType: string | null): string {
+  if (departure && departure > arrival) return departure;
+  const pkg = (packageType ?? "").toLowerCase();
+  const fourDay =
+    pkg.includes("4") ||
+    pkg.includes("balans") ||
+    pkg.includes("adrenalin") ||
+    pkg.includes("rafting plus") ||
+    pkg.includes("cetiri") ||
+    pkg.includes("četiri");
+  return addDaysClient(arrival, fourDay ? 3 : 2);
 }
 
 export function ReservationActions({ reservation, cabins }: Props) {
@@ -18,6 +45,59 @@ export function ReservationActions({ reservation, cabins }: Props) {
   const [adminNotes, setAdminNotes] = useState(reservation.admin_notes ?? "");
   const [cabinId, setCabinId] = useState(reservation.cabin_id ?? "");
   const [floor, setFloor] = useState<"ground" | "upper" | "">(reservation.floor ?? "");
+  const [availability, setAvailability] = useState<AvailableUnit[] | null>(null);
+
+  const effectiveDeparture = useMemo(
+    () => deriveDepartureClient(reservation.arrival_date, reservation.departure_date, reservation.package_type),
+    [reservation.arrival_date, reservation.departure_date, reservation.package_type]
+  );
+
+  useEffect(() => {
+    const url = `/api/availability?arrival=${reservation.arrival_date}&departure=${effectiveDeparture}&exclude=${reservation.id}`;
+    fetch(url)
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setAvailability)
+      .catch(() => setAvailability([]));
+  }, [reservation.id, reservation.arrival_date, effectiveDeparture]);
+
+  const unitLookup = (cId: string, fl: "ground" | "upper") =>
+    availability?.find((u) => u.cabin_id === cId && u.floor === fl);
+
+  const floorOptions: Array<{ value: "ground" | "upper"; label: string; disabled: boolean; conflictName?: string }> = useMemo(() => {
+    if (!cabinId) return [];
+    const g = unitLookup(cabinId, "ground");
+    const u = unitLookup(cabinId, "upper");
+    return [
+      {
+        value: "ground",
+        label: "Prizemlje (6 mesta)",
+        disabled: g ? !g.available && reservation.floor !== "ground" : false,
+        conflictName: g?.conflict ? `${g.conflict.first_name} ${g.conflict.last_name}` : undefined,
+      },
+      {
+        value: "upper",
+        label: "Sprat (4 mesta)",
+        disabled: u ? !u.available && reservation.floor !== "upper" : false,
+        conflictName: u?.conflict ? `${u.conflict.first_name} ${u.conflict.last_name}` : undefined,
+      },
+    ];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cabinId, availability, reservation.floor]);
+
+  const availabilitySummary = useMemo(() => {
+    if (!availability) return "";
+    const free = availability.filter((u) => u.available);
+    if (free.length === 0) return "Sve jedinice zauzete za ovaj datum.";
+    const byCabin = new Map<string, string[]>();
+    for (const u of free) {
+      const list = byCabin.get(u.cabin_name) ?? [];
+      list.push(u.floor === "ground" ? "Prizemlje" : "Sprat");
+      byCabin.set(u.cabin_name, list);
+    }
+    return Array.from(byCabin.entries())
+      .map(([n, fs]) => `${n} (${fs.join(", ")})`)
+      .join(" · ");
+  }, [availability]);
 
   // ── Packages ───────────────────────────────────────────────
   const [packages, setPackages] = useState<Package[]>([]);
@@ -148,9 +228,18 @@ export function ReservationActions({ reservation, cabins }: Props) {
   const handleAssignCabin = async () => {
     if (!cabinId || !floor) { alert("Odaberi bungalov i sprat"); return; }
     setLoading("cabin");
-    await patch({ cabin_id: cabinId, floor });
-    setLoading(null);
-    router.refresh();
+    try {
+      const res = await patch({ cabin_id: cabinId, floor });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Greška pri čuvanju smeštaja");
+      }
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Greška pri čuvanju smeštaja");
+    } finally {
+      setLoading(null);
+    }
   };
 
   const handleCancel = async () => {
@@ -354,19 +443,42 @@ export function ReservationActions({ reservation, cabins }: Props) {
         <h2 className="adm-card-title">Smeštaj</h2>
         <div className="adm-cabin-row">
           <select className="adm-input" value={cabinId}
-            onChange={(e) => setCabinId(e.target.value)}>
+            onChange={(e) => { setCabinId(e.target.value); setFloor(""); }}>
             <option value="">Odaberi bungalov</option>
-            {cabins.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
+            {cabins.map((c) => {
+              const g = availability?.find((u) => u.cabin_id === c.id && u.floor === "ground");
+              const up = availability?.find((u) => u.cabin_id === c.id && u.floor === "upper");
+              const bothTaken = g && up && !g.available && !up.available && reservation.cabin_id !== c.id;
+              return (
+                <option key={c.id} value={c.id} disabled={bothTaken ?? false}>
+                  {c.name}{bothTaken ? " — zauzet" : ""}
+                </option>
+              );
+            })}
           </select>
           <select className="adm-input" value={floor}
             onChange={(e) => setFloor(e.target.value as "ground" | "upper")}>
             <option value="">Sprat</option>
-            <option value="ground">Prizemlje (6 mesta)</option>
-            <option value="upper">Sprat (4 mesta)</option>
+            {floorOptions.map((opt) => (
+              <option key={opt.value} value={opt.value} disabled={opt.disabled}>
+                {opt.label}{opt.disabled && opt.conflictName ? ` — ${opt.conflictName}` : ""}
+              </option>
+            ))}
+            {floorOptions.length === 0 && (
+              <>
+                <option value="ground">Prizemlje (6 mesta)</option>
+                <option value="upper">Sprat (4 mesta)</option>
+              </>
+            )}
           </select>
         </div>
+        {availability && (
+          <div className="adm-cabin-hint">
+            {availabilitySummary
+              ? `Dostupno ${reservation.arrival_date} → ${effectiveDeparture}: ${availabilitySummary}`
+              : "Učitavanje dostupnosti..."}
+          </div>
+        )}
         <button
           className="adm-btn adm-btn--secondary"
           onClick={handleAssignCabin}
@@ -460,6 +572,7 @@ export function ReservationActions({ reservation, cabins }: Props) {
         .adm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .adm-cabin-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .adm-cabin-hint { font-size: 11px; color: rgba(168,213,213,0.55); margin-top: 8px; line-height: 1.5; }
         .adm-input { width: 100%; padding: 9px 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(62,140,140,0.2); border-radius: 8px; color: #e8f5f5; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; }
         .adm-input:focus { border-color: rgba(58,144,144,0.5); }
         .adm-input option { background: #0f2020; }
