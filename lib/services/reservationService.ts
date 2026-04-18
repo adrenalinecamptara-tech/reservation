@@ -4,6 +4,9 @@ import { markTokenUsed } from "./linkService";
 import { notifyAdmin } from "./emailService";
 import { generateVoucher } from "./pdfService";
 import { sendVoucherToGuest, sendUpdatedVoucherToGuest } from "./emailService";
+import { addDays, deriveDeparture, rangesOverlap } from "./calendarService";
+
+const CAMP_CAPACITY = 40;
 
 /**
  * Create a reservation from guest form submission.
@@ -252,6 +255,127 @@ export async function getStats(): Promise<{
       (sum, r) => sum + (Number(r.total_amount ?? r.deposit_amount) ?? 0),
       0
     ),
+  };
+}
+
+export interface DashboardData {
+  today: string;
+  todayLabel: string;
+  arrivalsToday: Array<{ id: string; name: string; people: number; package: string | null; cabin: string | null }>;
+  departuresToday: Array<{ id: string; name: string; people: number; cabin: string | null }>;
+  inCampNow: { people: number; capacity: number; reservations: number };
+  weekOccupancy: Array<{ date: string; dayLabel: string; people: number; capacity: number }>;
+  pipeline: { pending: number; approvedUnpaid: number; paid: number; cancelled: number };
+  money: { totalDeposits: number; totalRevenue: number; outstandingRevenue: number; avgPerReservation: number };
+  pendingList: Reservation[];
+}
+
+/**
+ * Single-query dashboard payload — daily occupancy, week capacity strip, pipeline, money.
+ * Capacity is per-day (40 beds), not seasonal total.
+ */
+export async function getDashboardData(): Promise<DashboardData> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("reservations")
+    .select("*, cabin:cabins(*)")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`Failed to load dashboard: ${error.message}`);
+
+  const all = (data ?? []) as Reservation[];
+  const active = all.filter((r) => r.status !== "cancelled");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const todayLabel = new Date().toLocaleDateString("sr-Latn-RS", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
+
+  const withDeparture = active.map((r) => ({
+    r,
+    departure: deriveDeparture(r.arrival_date, r.departure_date, r.package_type),
+  }));
+
+  // Today
+  const arrivalsToday = active
+    .filter((r) => r.arrival_date === today)
+    .map((r) => ({
+      id: r.id,
+      name: `${r.first_name} ${r.last_name}`,
+      people: r.number_of_people,
+      package: r.package_type,
+      cabin: r.cabin
+        ? `${r.cabin.name}${r.floor ? ` — ${r.floor === "ground" ? "Prizemlje" : "Sprat"}` : ""}`
+        : null,
+    }));
+
+  const departuresToday = withDeparture
+    .filter(({ departure }) => departure === today)
+    .map(({ r }) => ({
+      id: r.id,
+      name: `${r.first_name} ${r.last_name}`,
+      people: r.number_of_people,
+      cabin: r.cabin
+        ? `${r.cabin.name}${r.floor ? ` — ${r.floor === "ground" ? "Prizemlje" : "Sprat"}` : ""}`
+        : null,
+    }));
+
+  // In camp now: arrival <= today < departure
+  const inCampRows = withDeparture.filter(
+    ({ r, departure }) => r.arrival_date <= today && today < departure
+  );
+  const inCampNow = {
+    people: inCampRows.reduce((s, { r }) => s + (r.number_of_people ?? 0), 0),
+    capacity: CAMP_CAPACITY,
+    reservations: inCampRows.length,
+  };
+
+  // Week occupancy starting today
+  const weekOccupancy = Array.from({ length: 7 }, (_, i) => {
+    const date = addDays(today, i);
+    const next = addDays(date, 1);
+    const people = withDeparture
+      .filter(({ r, departure }) => rangesOverlap(r.arrival_date, departure, date, next))
+      .reduce((s, { r }) => s + (r.number_of_people ?? 0), 0);
+    const dayLabel = new Date(date + "T00:00:00").toLocaleDateString("sr-Latn-RS", {
+      weekday: "short", day: "numeric", month: "numeric",
+    });
+    return { date, dayLabel, people, capacity: CAMP_CAPACITY };
+  });
+
+  // Pipeline
+  const pipeline = {
+    pending: active.filter((r) => r.status === "pending").length,
+    approvedUnpaid: active.filter(
+      (r) => (r.status === "approved" || r.status === "modified") && !r.paid_at
+    ).length,
+    paid: active.filter((r) => r.paid_at).length,
+    cancelled: all.filter((r) => r.status === "cancelled").length,
+  };
+
+  // Money
+  const totalDeposits = active.reduce((s, r) => s + (Number(r.deposit_amount) || 0), 0);
+  const paidRows = active.filter((r) => r.paid_at);
+  const totalRevenue = paidRows.reduce(
+    (s, r) => s + (Number(r.total_amount ?? r.deposit_amount) || 0),
+    0
+  );
+  const outstandingRevenue = active
+    .filter((r) => (r.status === "approved" || r.status === "modified") && !r.paid_at)
+    .reduce((s, r) => s + (Number(r.remaining_amount) || 0), 0);
+  const avgPerReservation = paidRows.length > 0 ? totalRevenue / paidRows.length : 0;
+
+  const pendingList = active.filter((r) => r.status === "pending").slice(0, 10);
+
+  return {
+    today,
+    todayLabel,
+    arrivalsToday,
+    departuresToday,
+    inCampNow,
+    weekOccupancy,
+    pipeline,
+    money: { totalDeposits, totalRevenue, outstandingRevenue, avgPerReservation },
+    pendingList,
   };
 }
 

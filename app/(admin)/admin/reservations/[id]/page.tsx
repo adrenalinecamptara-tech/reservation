@@ -11,7 +11,8 @@ interface Props {
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending:   { label: "Na čekanju", color: "#e8a030" },
-  approved:  { label: "Odobreno",   color: "#3aaa70" },
+  approved:  { label: "Odobreno",   color: "#4f9bbf" },
+  paid:      { label: "Naplaćeno",  color: "#16a34a" },
   cancelled: { label: "Otkazano",   color: "#c44a5a" },
   modified:  { label: "Izmenjeno",  color: "#5a70c0" },
 };
