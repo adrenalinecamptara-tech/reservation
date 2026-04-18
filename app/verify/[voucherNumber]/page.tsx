@@ -12,13 +12,15 @@ const STATUS_LABEL: Record<string, string> = {
   approved: "Odobreno",
   cancelled: "Otkazano",
   modified: "Izmijenjeno",
+  paid: "Naplaćeno",
 };
 
 const STATUS_COLOR: Record<string, string> = {
   pending: "#b45309",
-  approved: "#15803d",
+  approved: "#0e7490",
   cancelled: "#b91c1c",
   modified: "#1d4ed8",
+  paid: "#15803d",
 };
 
 export default async function VerifyPage({ params }: Props) {
@@ -90,32 +92,20 @@ export default async function VerifyPage({ params }: Props) {
             </div>
           </div>
           {found && (
-            <div style={{ display: "flex", flexDirection: "column" as const, gap: 6, alignItems: "flex-end" }}>
-              <div style={{
-                background: reservation.status === "approved" ? "rgba(21,128,61,0.2)" : "rgba(180,83,9,0.2)",
-                border: `1px solid ${STATUS_COLOR[reservation.status] ?? "#666"}`,
-                borderRadius: 8,
-                padding: "8px 16px",
-                color: STATUS_COLOR[reservation.status] ?? "#666",
-                fontSize: 13,
-                fontWeight: 700,
-              }}>
-                {STATUS_LABEL[reservation.status] ?? reservation.status}
-              </div>
-              {reservation.paid_at && (
-                <div style={{
-                  background: "rgba(22,163,74,0.2)",
-                  border: "1px solid #16a34a",
-                  borderRadius: 8,
-                  padding: "6px 12px",
-                  color: "#16a34a",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  letterSpacing: "0.05em",
-                }}>
-                  ✓ PLAĆENO
-                </div>
-              )}
+            <div style={{
+              background: reservation.status === "paid"
+                ? "rgba(21,128,61,0.2)"
+                : reservation.status === "approved"
+                ? "rgba(14,116,144,0.2)"
+                : "rgba(180,83,9,0.2)",
+              border: `1px solid ${STATUS_COLOR[reservation.status] ?? "#666"}`,
+              borderRadius: 8,
+              padding: "8px 16px",
+              color: STATUS_COLOR[reservation.status] ?? "#666",
+              fontSize: 13,
+              fontWeight: 700,
+            }}>
+              {reservation.status === "paid" ? "✓ " : ""}{STATUS_LABEL[reservation.status] ?? reservation.status}
             </div>
           )}
         </div>

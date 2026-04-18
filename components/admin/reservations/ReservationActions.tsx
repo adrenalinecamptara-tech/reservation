@@ -253,7 +253,7 @@ export function ReservationActions({ reservation, cabins }: Props) {
     router.refresh();
   };
 
-  const canResend = reservation.status === "approved" || reservation.status === "modified";
+  const canResend = reservation.status === "approved" || reservation.status === "modified" || reservation.status === "paid";
 
   return (
     <>

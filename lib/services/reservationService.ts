@@ -202,6 +202,7 @@ export async function confirmPayment(id: string, paidBy: string): Promise<Reserv
   const { data, error } = await supabase
     .from("reservations")
     .update({
+      status: "paid",
       paid_at: existing.paid_at ?? new Date().toISOString(),
       paid_by: existing.paid_by ?? paidBy,
     })
@@ -242,7 +243,7 @@ export async function getStats(): Promise<{
   return {
     total: active.length,
     pending: active.filter((r) => r.status === "pending").length,
-    approved: active.filter((r) => r.status === "approved" || r.status === "modified").length,
+    approved: active.filter((r) => (r.status === "approved" || r.status === "modified") && !r.paid_at).length,
     cancelled: rows.filter((r) => r.status === "cancelled").length,
     paid: paidRows.length,
     totalPeople: active.reduce((sum, r) => sum + (r.number_of_people ?? 0), 0),

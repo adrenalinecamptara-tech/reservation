@@ -4,7 +4,7 @@
  *   npx supabase gen types typescript --project-id <id> > lib/db/types.ts
  */
 
-export type ReservationStatus = "pending" | "approved" | "cancelled" | "modified";
+export type ReservationStatus = "pending" | "approved" | "cancelled" | "modified" | "paid";
 export type Floor = "ground" | "upper";
 
 export interface Package {

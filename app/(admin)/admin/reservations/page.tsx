@@ -5,7 +5,8 @@ import { DeleteReservationButton } from "@/components/admin/reservations/DeleteR
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   pending:   { label: "Na čekanju", color: "#e8a030" },
-  approved:  { label: "Odobreno",   color: "#3aaa70" },
+  approved:  { label: "Odobreno",   color: "#4f9bbf" },
+  paid:      { label: "Naplaćeno",  color: "#16a34a" },
   cancelled: { label: "Otkazano",   color: "#c44a5a" },
   modified:  { label: "Izmenjeno",  color: "#5a70c0" },
 };
@@ -38,7 +39,7 @@ export default async function ReservationsPage({ searchParams }: Props) {
       {/* Filter bar */}
       <form className="adm-filters" method="GET">
         <div className="adm-filter-status">
-          {["", "pending", "approved", "cancelled"].map((s) => (
+          {["", "pending", "approved", "paid", "cancelled"].map((s) => (
             <a
               key={s}
               href={`/admin/reservations?status=${s}${params.search ? `&search=${params.search}` : ""}`}

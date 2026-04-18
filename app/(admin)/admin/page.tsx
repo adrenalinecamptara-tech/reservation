@@ -31,7 +31,7 @@ export default async function AdminDashboard() {
       <div className="adm-stats">
         <StatCard label="Ukupno rezervacija" value={stats.total} color="#3a9090" />
         <StatCard label="Na čekanju" value={stats.pending} color="#e8a030" accent />
-        <StatCard label="Odobreno" value={stats.approved} color="#3a9060" />
+        <StatCard label="Odobreno" value={stats.approved} color="#4f9bbf" />
         <StatCard label="Ukupno gostiju" value={stats.totalPeople} color="#5a70b0" />
         <StatCard
           label="Ukupni depoziti"
@@ -41,7 +41,7 @@ export default async function AdminDashboard() {
         <StatCard
           label={`Naplaćeno (${stats.paid})`}
           value={`${stats.totalRevenue.toFixed(0)} €`}
-          color="#3aaa70"
+          color="#16a34a"
         />
         <StatCard
           label="Kapacitet (40 ležaja)"

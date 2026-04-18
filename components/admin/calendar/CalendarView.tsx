@@ -72,7 +72,8 @@ function formatDateRange(arrival: string, departure: string): string {
 function statusMeta(status: OccupiedReservation["status"]) {
   if (status === "pending") return { label: "Na čekanju", bg: "#6b4a18", text: "#ffd89a", border: "#a47324" };
   if (status === "modified") return { label: "Izmenjeno", bg: "#1e4c6c", text: "#bfddff", border: "#3b78a8" };
-  return { label: "Odobreno", bg: "#1e5c3c", text: "#c6edd1", border: "#2f8f5c" };
+  if (status === "paid") return { label: "Naplaćeno", bg: "#0f5132", text: "#a7f3c4", border: "#16a34a" };
+  return { label: "Odobreno", bg: "#164e63", text: "#bee5f0", border: "#0e7490" };
 }
 
 export function CalendarView({ year, month, reservations, cabins }: Props) {
