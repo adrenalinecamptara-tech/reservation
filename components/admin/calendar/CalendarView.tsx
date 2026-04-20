@@ -69,11 +69,17 @@ function formatDateRange(arrival: string, departure: string): string {
   return `${fmt(a)} → ${fmt(d)}`;
 }
 
-function statusMeta(status: OccupiedReservation["status"]) {
-  if (status === "pending") return { label: "Na čekanju", bg: "#6b4a18", text: "#ffd89a", border: "#a47324" };
-  if (status === "modified") return { label: "Izmenjeno", bg: "#1e4c6c", text: "#bfddff", border: "#3b78a8" };
-  if (status === "paid") return { label: "Naplaćeno", bg: "#0f5132", text: "#a7f3c4", border: "#16a34a" };
+function statusMeta(r: OccupiedReservation) {
+  if (r.kind === "partner") return { label: "Partner", bg: "#4c1d95", text: "#e9d5ff", border: "#8b5cf6" };
+  if (r.status === "pending") return { label: "Na čekanju", bg: "#6b4a18", text: "#ffd89a", border: "#a47324" };
+  if (r.status === "modified") return { label: "Izmenjeno", bg: "#1e4c6c", text: "#bfddff", border: "#3b78a8" };
+  if (r.status === "paid") return { label: "Naplaćeno", bg: "#0f5132", text: "#a7f3c4", border: "#16a34a" };
   return { label: "Odobreno", bg: "#164e63", text: "#bee5f0", border: "#0e7490" };
+}
+
+function displayName(r: OccupiedReservation): string {
+  if (r.kind === "partner") return r.partner_name ?? r.first_name;
+  return `${r.first_name} ${r.last_name}`.trim();
 }
 
 export function CalendarView({ year, month, reservations, cabins }: Props) {
@@ -225,10 +231,10 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
                     />
                   ))}
                   {bars.map((bar) => {
-                    const meta = statusMeta(bar.reservation.status);
+                    const meta = statusMeta(bar.reservation);
                     return (
                       <button
-                        key={bar.reservation.id}
+                        key={`${bar.reservation.kind}-${bar.reservation.id}`}
                         className="cal-bar"
                         style={{
                           left: `${bar.leftPct}%`,
@@ -243,12 +249,15 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
                           borderTopRightRadius: bar.clippedRight ? 0 : 4,
                           borderBottomRightRadius: bar.clippedRight ? 0 : 4,
                         }}
-                        onClick={() => router.push(`/admin/reservations/${bar.reservation.id}`)}
+                        onClick={() => {
+                          if (bar.reservation.kind === "partner") router.push(`/admin/partners`);
+                          else router.push(`/admin/reservations/${bar.reservation.id}`);
+                        }}
                         onMouseEnter={(e) => showTip(e.currentTarget, bar.reservation)}
                         onMouseLeave={hideTip}
                       >
                         <span className="cal-bar-text">
-                          {bar.reservation.first_name} {bar.reservation.last_name}
+                          {displayName(bar.reservation)}
                           <span className="cal-bar-meta"> · {bar.reservation.number_of_people}p</span>
                         </span>
                       </button>
@@ -312,17 +321,18 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
                   </div>
                 );
               }
-              const meta = statusMeta(reservation.status);
+              const meta = statusMeta(reservation);
+              const href = reservation.kind === "partner" ? `/admin/partners` : `/admin/reservations/${reservation.id}`;
               return (
                 <a
                   key={key}
-                  href={`/admin/reservations/${reservation.id}`}
+                  href={href}
                   className="cal-munit cal-munit-booked"
                   style={{ borderColor: meta.border }}
                 >
                   <div className="cal-munit-label">{unit.label}</div>
                   <div className="cal-munit-guest">
-                    {reservation.first_name} {reservation.last_name}
+                    {displayName(reservation)}
                   </div>
                   <div className="cal-munit-meta">
                     {reservation.number_of_people} osoba · {formatDateRange(reservation.arrival, reservation.departure)}
@@ -345,6 +355,7 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
         <div className="cal-legend-item"><span className="cal-sw" style={{ background: "#1e5c3c" }} /> Odobreno</div>
         <div className="cal-legend-item"><span className="cal-sw" style={{ background: "#1e4c6c" }} /> Izmenjeno</div>
         <div className="cal-legend-item"><span className="cal-sw" style={{ background: "#6b4a18" }} /> Na čekanju</div>
+        <div className="cal-legend-item"><span className="cal-sw" style={{ background: "#4c1d95" }} /> Partner</div>
       </div>
 
       <style>{`
@@ -436,9 +447,10 @@ function showTip(anchor: HTMLElement, r: OccupiedReservation) {
   if (typeof document === "undefined") return;
   const tip = document.getElementById("cal-tip");
   if (!tip) return;
-  const meta = statusMeta(r.status);
+  const meta = statusMeta(r);
+  const name = r.kind === "partner" ? (r.partner_name ?? r.first_name) : `${r.first_name} ${r.last_name}`;
   tip.innerHTML = `
-    <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${escape(r.first_name)} ${escape(r.last_name)}</div>
+    <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${escape(name)}</div>
     <div style="color:rgba(168,213,213,0.7);margin-bottom:2px;">${formatDateRange(r.arrival, r.departure)}</div>
     <div style="color:rgba(168,213,213,0.7);margin-bottom:2px;">${r.number_of_people} osoba${r.package_type ? " · " + escape(r.package_type) : ""}</div>
     <div style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:4px;background:${meta.bg};color:${meta.text};font-size:10px;font-weight:700;">${meta.label}</div>

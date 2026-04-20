@@ -3,6 +3,7 @@ import type { Reservation, ReservationStatus, Floor, Cabin } from "@/lib/db/type
 
 export interface OccupiedReservation {
   id: string;
+  kind: "guest" | "partner";
   cabin_id: string;
   floor: Floor;
   arrival: string;
@@ -13,6 +14,7 @@ export interface OccupiedReservation {
   number_of_people: number;
   package_type: string | null;
   voucher_number: string | null;
+  partner_name?: string | null;
 }
 
 export interface AvailableUnit {
@@ -82,6 +84,7 @@ function toOccupied(r: Reservation): OccupiedReservation | null {
   if (!r.cabin_id || !r.floor) return null;
   return {
     id: r.id,
+    kind: "guest",
     cabin_id: r.cabin_id,
     floor: r.floor,
     arrival: r.arrival_date,
@@ -95,6 +98,35 @@ function toOccupied(r: Reservation): OccupiedReservation | null {
   };
 }
 
+interface PartnerBookingRow {
+  id: string;
+  cabin_id: string;
+  floor: Floor;
+  arrival_date: string;
+  nights: number;
+  number_of_people: number;
+  partner?: { name: string } | null;
+}
+
+function partnerToOccupied(b: PartnerBookingRow): OccupiedReservation {
+  const name = b.partner?.name ?? "Partner";
+  return {
+    id: b.id,
+    kind: "partner",
+    cabin_id: b.cabin_id,
+    floor: b.floor,
+    arrival: b.arrival_date,
+    departure: addDays(b.arrival_date, b.nights),
+    status: "approved",
+    first_name: name,
+    last_name: "",
+    number_of_people: b.number_of_people,
+    package_type: null,
+    voucher_number: null,
+    partner_name: name,
+  };
+}
+
 // ── Queries ──────────────────────────────────────────────────────
 
 export async function getMonthReservations(
@@ -104,18 +136,32 @@ export async function getMonthReservations(
   const supabase = createServiceClient();
   const { start, endExclusive } = monthRange(year, month);
 
-  const { data, error } = await supabase
-    .from("reservations")
-    .select("*")
-    .neq("status", "cancelled")
-    .lt("arrival_date", endExclusive);
+  const [resResult, partnerResult] = await Promise.all([
+    supabase
+      .from("reservations")
+      .select("*")
+      .neq("status", "cancelled")
+      .lt("arrival_date", endExclusive),
+    supabase
+      .from("partner_bookings")
+      .select("id, cabin_id, floor, arrival_date, nights, number_of_people, partner:partners(name)")
+      .lt("arrival_date", endExclusive),
+  ]);
 
-  if (error) throw new Error(`Failed to load month reservations: ${error.message}`);
+  if (resResult.error) throw new Error(`Failed to load month reservations: ${resResult.error.message}`);
+  if (partnerResult.error) throw new Error(`Failed to load partner bookings: ${partnerResult.error.message}`);
 
-  return ((data ?? []) as Reservation[])
+  const guestOccupied = ((resResult.data ?? []) as Reservation[])
     .map(toOccupied)
     .filter((r): r is OccupiedReservation => r !== null)
     .filter((r) => rangesOverlap(r.arrival, r.departure, start, endExclusive));
+
+  const partnerRows = (partnerResult.data ?? []) as unknown as PartnerBookingRow[];
+  const partnerOccupied = partnerRows
+    .map(partnerToOccupied)
+    .filter((r) => rangesOverlap(r.arrival, r.departure, start, endExclusive));
+
+  return [...guestOccupied, ...partnerOccupied];
 }
 
 export async function getAvailableUnits(
@@ -125,24 +171,36 @@ export async function getAvailableUnits(
 ): Promise<AvailableUnit[]> {
   const supabase = createServiceClient();
 
-  const [cabinsResult, reservationsResult] = await Promise.all([
+  const [cabinsResult, reservationsResult, partnersResult] = await Promise.all([
     supabase.from("cabins").select().eq("active", true).order("name"),
     supabase
       .from("reservations")
       .select("*")
       .neq("status", "cancelled")
       .lt("arrival_date", departure),
+    supabase
+      .from("partner_bookings")
+      .select("id, cabin_id, floor, arrival_date, nights, number_of_people, partner:partners(name)")
+      .lt("arrival_date", departure),
   ]);
 
   if (cabinsResult.error) throw new Error(cabinsResult.error.message);
   if (reservationsResult.error) throw new Error(reservationsResult.error.message);
+  if (partnersResult.error) throw new Error(partnersResult.error.message);
 
   const cabins = (cabinsResult.data ?? []) as Cabin[];
-  const reservations = ((reservationsResult.data ?? []) as Reservation[])
+  const guestReservations = ((reservationsResult.data ?? []) as Reservation[])
     .filter((r) => !excludeReservationId || r.id !== excludeReservationId)
     .map(toOccupied)
     .filter((r): r is OccupiedReservation => r !== null)
     .filter((r) => rangesOverlap(r.arrival, r.departure, arrival, departure));
+
+  const partnerRows = (partnersResult.data ?? []) as unknown as PartnerBookingRow[];
+  const partnerOccupied = partnerRows
+    .map(partnerToOccupied)
+    .filter((r) => rangesOverlap(r.arrival, r.departure, arrival, departure));
+
+  const reservations = [...guestReservations, ...partnerOccupied];
 
   const units: AvailableUnit[] = [];
   for (const cabin of cabins) {

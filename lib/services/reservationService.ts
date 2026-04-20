@@ -266,7 +266,8 @@ export interface DashboardData {
   inCampNow: { people: number; capacity: number; reservations: number };
   weekOccupancy: Array<{ date: string; dayLabel: string; people: number; capacity: number }>;
   pipeline: { pending: number; approvedUnpaid: number; paid: number; cancelled: number };
-  money: { totalDeposits: number; totalRevenue: number; outstandingRevenue: number; avgPerReservation: number };
+  money: { totalDeposits: number; totalRevenue: number; outstandingRevenue: number; avgPerReservation: number; partnerRevenue: number };
+  partners: { bookingsCount: number; peopleCount: number; revenue: number };
   pendingList: Reservation[];
 }
 
@@ -276,11 +277,19 @@ export interface DashboardData {
  */
 export async function getDashboardData(): Promise<DashboardData> {
   const supabase = createServiceClient();
-  const { data, error } = await supabase
-    .from("reservations")
-    .select("*, cabin:cabins(*)")
-    .order("created_at", { ascending: false });
+  const [resResult, partnerResult] = await Promise.all([
+    supabase
+      .from("reservations")
+      .select("*, cabin:cabins(*)")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("partner_bookings")
+      .select("number_of_people, price_per_person"),
+  ]);
+  const { data, error } = resResult;
   if (error) throw new Error(`Failed to load dashboard: ${error.message}`);
+  if (partnerResult.error) throw new Error(`Failed to load partner bookings: ${partnerResult.error.message}`);
+  const partnerRows = partnerResult.data ?? [];
 
   const all = (data ?? []) as Reservation[];
   const active = all.filter((r) => r.status !== "cancelled");
@@ -366,6 +375,12 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const pendingList = active.filter((r) => r.status === "pending").slice(0, 10);
 
+  const partnerPeople = partnerRows.reduce((s, r) => s + (Number(r.number_of_people) || 0), 0);
+  const partnerRevenue = partnerRows.reduce(
+    (s, r) => s + (Number(r.price_per_person) || 0) * (Number(r.number_of_people) || 0),
+    0
+  );
+
   return {
     today,
     todayLabel,
@@ -374,7 +389,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     inCampNow,
     weekOccupancy,
     pipeline,
-    money: { totalDeposits, totalRevenue, outstandingRevenue, avgPerReservation },
+    money: { totalDeposits, totalRevenue, outstandingRevenue, avgPerReservation, partnerRevenue },
+    partners: { bookingsCount: partnerRows.length, peopleCount: partnerPeople, revenue: partnerRevenue },
     pendingList,
   };
 }

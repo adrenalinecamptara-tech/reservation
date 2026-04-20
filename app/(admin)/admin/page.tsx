@@ -8,7 +8,7 @@ export default async function AdminDashboard() {
   if (!user) redirect("/admin/login");
 
   const data = await getDashboardData();
-  const { arrivalsToday, departuresToday, inCampNow, weekOccupancy, pipeline, money, pendingList, todayLabel } = data;
+  const { arrivalsToday, departuresToday, inCampNow, weekOccupancy, pipeline, money, partners, pendingList, todayLabel } = data;
 
   const occPct = Math.round((inCampNow.people / inCampNow.capacity) * 100);
 
@@ -158,6 +158,20 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
+      {/* ── PARTNERI ────────────────────────────────────────────── */}
+      <div className="adm-section">
+        <h2 className="adm-section-title">Partneri</h2>
+        <div className="adm-stats">
+          <StatCard label="Rezervacije partnera" value={partners.bookingsCount} color="#a78bfa" />
+          <StatCard label="Ljudi (partneri)" value={partners.peopleCount} color="#a78bfa" />
+          <StatCard label="Zarada od partnera" value={`${partners.revenue.toFixed(0)} €`} color="#8b5cf6" />
+          <a href="/admin/partners" className="adm-stat adm-stat-link">
+            <div className="adm-stat-value" style={{ color: "#8b5cf6", fontSize: 16 }}>Upravljaj →</div>
+            <div className="adm-stat-label">Dodaj / obriši</div>
+          </a>
+        </div>
+      </div>
+
       {/* ── PENDING LISTA ───────────────────────────────────────── */}
       {pendingList.length > 0 && (
         <div className="adm-section">
@@ -185,6 +199,9 @@ export default async function AdminDashboard() {
         </a>
         <a href="/admin/calendar" className="adm-dash-link">
           <span>📅</span><span>Kalendar</span>
+        </a>
+        <a href="/admin/partners" className="adm-dash-link">
+          <span>🤝</span><span>Partneri</span>
         </a>
         <a href="/admin/links" className="adm-dash-link">
           <span>🔗</span><span>Generiši link</span>
@@ -250,8 +267,11 @@ export default async function AdminDashboard() {
         .adm-pending-meta { display: flex; gap: 12px; font-size: 13px; color: rgba(168,213,213,0.6); flex-wrap: wrap; flex: 1; }
         .adm-pending-action { font-size: 13px; color: rgba(168,213,213,0.5); margin-left: auto; white-space: nowrap; }
 
+        .adm-stat-link { text-decoration: none; display: block; }
+        .adm-stat-link:hover { border-color: rgba(139,92,246,0.4); }
+
         /* Nav */
-        .adm-dash-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+        .adm-dash-links { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
         .adm-dash-link { display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: rgba(10,25,25,0.8); border: 1px solid rgba(62,140,140,0.15); border-radius: 12px; text-decoration: none; color: rgba(168,213,213,0.7); font-size: 14px; font-weight: 500; transition: all 0.2s; }
         .adm-dash-link:hover { border-color: rgba(62,140,140,0.35); color: #e8f5f5; }
         .adm-dash-link span:first-child { font-size: 20px; }
@@ -262,6 +282,9 @@ export default async function AdminDashboard() {
         }
         @media (max-width: 700px) {
           .adm-week { grid-template-columns: repeat(4, 1fr); }
+        }
+        @media (max-width: 700px) {
+          .adm-dash-links { grid-template-columns: repeat(2, 1fr); }
         }
         @media (max-width: 600px) {
           .adm-today { grid-template-columns: 1fr; }

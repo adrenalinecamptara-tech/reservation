@@ -138,6 +138,44 @@ export interface ReservationUpdate {
   paid_by?: string | null;
 }
 
+export interface Partner {
+  id: string;
+  name: string;
+  default_price_per_person: number;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface PartnerBooking {
+  id: string;
+  partner_id: string;
+  cabin_id: string;
+  floor: Floor;
+  arrival_date: string;
+  nights: number;
+  number_of_people: number;
+  price_per_person: number;
+  notes: string | null;
+  paid_at: string | null;
+  paid_by: string | null;
+  created_by: string | null;
+  created_at: string;
+  partner?: Partner;
+  cabin?: Cabin;
+}
+
+export interface PartnerBookingInsert {
+  partner_id: string;
+  cabin_id: string;
+  floor: Floor;
+  arrival_date: string;
+  nights: number;
+  number_of_people: number;
+  price_per_person: number;
+  notes?: string | null;
+  created_by?: string | null;
+}
+
 // Minimal Database type wrapper for Supabase client generics
 export type Database = {
   public: {
@@ -161,6 +199,16 @@ export type Database = {
         Row: Package;
         Insert: Omit<Package, "id" | "created_at">;
         Update: Partial<Omit<Package, "id" | "created_at">>;
+      };
+      partners: {
+        Row: Partner;
+        Insert: Omit<Partner, "id" | "created_at">;
+        Update: Partial<Omit<Partner, "id" | "created_at">>;
+      };
+      partner_bookings: {
+        Row: PartnerBooking;
+        Insert: PartnerBookingInsert;
+        Update: Partial<PartnerBookingInsert>;
       };
     };
     Enums: {
