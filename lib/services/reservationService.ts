@@ -313,6 +313,7 @@ export interface DashboardData {
   };
   partners: { bookingsCount: number; peopleCount: number; revenue: number };
   pendingList: Reservation[];
+  referralStats: Array<{ source: string; count: number; percent: number }>;
 }
 
 /**
@@ -442,6 +443,24 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const pendingList = active.filter((r) => r.status === "pending").slice(0, 10);
 
+  // Referral source stats — aggregate active reservations by source
+  const referralMap = new Map<string, number>();
+  for (const r of active) {
+    const src = (r as any).referral_source as string | null | undefined;
+    const source = src ?? "Nepoznato";
+    referralMap.set(source, (referralMap.get(source) ?? 0) + 1);
+  }
+  const referralTotal = active.length;
+  const referralStats = Array.from(referralMap.entries())
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([source, count]) => ({
+      source,
+      count,
+      percent:
+        referralTotal > 0 ? Math.round((count / referralTotal) * 100) : 0,
+    }));
+
   const partnerPeople = partnerRows.reduce(
     (s, r) => s + (Number(r.number_of_people) || 0),
     0,
@@ -473,6 +492,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       revenue: partnerRevenue,
     },
     pendingList,
+    referralStats,
   };
 }
 

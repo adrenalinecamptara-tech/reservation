@@ -1,14 +1,28 @@
 import { createClient } from "@/lib/db/supabase";
 import { redirect } from "next/navigation";
 import { getDashboardData } from "@/lib/services/reservationService";
+import { ReferralWheel } from "@/components/admin/dashboard/ReferralWheel";
 
 export default async function AdminDashboard() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/admin/login");
 
   const data = await getDashboardData();
-  const { arrivalsToday, departuresToday, inCampNow, weekOccupancy, pipeline, money, partners, pendingList, todayLabel } = data;
+  const {
+    arrivalsToday,
+    departuresToday,
+    inCampNow,
+    weekOccupancy,
+    pipeline,
+    money,
+    partners,
+    pendingList,
+    todayLabel,
+    referralStats,
+  } = data;
 
   const occPct = Math.round((inCampNow.people / inCampNow.capacity) * 100);
 
@@ -19,7 +33,9 @@ export default async function AdminDashboard() {
           <h1 className="adm-dash-title">Dashboard</h1>
           <p className="adm-dash-date">{todayLabel}</p>
         </div>
-        <a href="/admin/links" className="adm-btn-new">+ Novi link</a>
+        <a href="/admin/links" className="adm-btn-new">
+          + Novi link
+        </a>
       </div>
 
       {/* ── DANAS — akciona traka ───────────────────────────────── */}
@@ -34,9 +50,16 @@ export default async function AdminDashboard() {
             <div className="adm-today-empty">Nema dolazaka</div>
           ) : (
             arrivalsToday.map((a) => (
-              <a key={a.id} href={`/admin/reservations/${a.id}`} className="adm-today-item">
+              <a
+                key={a.id}
+                href={`/admin/reservations/${a.id}`}
+                className="adm-today-item"
+              >
                 <span className="adm-today-name">{a.name}</span>
-                <span className="adm-today-meta">👥 {a.people}{a.cabin ? ` · ${a.cabin}` : ""}</span>
+                <span className="adm-today-meta">
+                  👥 {a.people}
+                  {a.cabin ? ` · ${a.cabin}` : ""}
+                </span>
               </a>
             ))
           )}
@@ -52,9 +75,16 @@ export default async function AdminDashboard() {
             <div className="adm-today-empty">Nema odlazaka</div>
           ) : (
             departuresToday.map((d) => (
-              <a key={d.id} href={`/admin/reservations/${d.id}`} className="adm-today-item">
+              <a
+                key={d.id}
+                href={`/admin/reservations/${d.id}`}
+                className="adm-today-item"
+              >
                 <span className="adm-today-name">{d.name}</span>
-                <span className="adm-today-meta">👥 {d.people}{d.cabin ? ` · ${d.cabin}` : ""}</span>
+                <span className="adm-today-meta">
+                  👥 {d.people}
+                  {d.cabin ? ` · ${d.cabin}` : ""}
+                </span>
               </a>
             ))
           )}
@@ -64,19 +94,27 @@ export default async function AdminDashboard() {
           icon="🏠"
           label="U kampu sada"
           count={`${inCampNow.people}/${inCampNow.capacity}`}
-          color={occPct >= 90 ? "#c44a5a" : occPct >= 60 ? "#e8a030" : "#3aaa70"}
+          color={
+            occPct >= 90 ? "#c44a5a" : occPct >= 60 ? "#e8a030" : "#3aaa70"
+          }
         >
           <div className="adm-today-bar">
             <div
               className="adm-today-bar-fill"
               style={{
                 width: `${Math.min(100, occPct)}%`,
-                background: occPct >= 90 ? "#c44a5a" : occPct >= 60 ? "#e8a030" : "#3aaa70",
+                background:
+                  occPct >= 90
+                    ? "#c44a5a"
+                    : occPct >= 60
+                      ? "#e8a030"
+                      : "#3aaa70",
               }}
             />
           </div>
           <div className="adm-today-meta" style={{ marginTop: 8 }}>
-            {occPct}% popunjeno · {inCampNow.reservations} {inCampNow.reservations === 1 ? "rezervacija" : "rezervacija"}
+            {occPct}% popunjeno · {inCampNow.reservations}{" "}
+            {inCampNow.reservations === 1 ? "rezervacija" : "rezervacija"}
           </div>
         </TodayCard>
 
@@ -90,7 +128,10 @@ export default async function AdminDashboard() {
           {pipeline.pending === 0 ? (
             <div className="adm-today-empty">Sve rešeno ✓</div>
           ) : (
-            <a href="/admin/reservations?status=pending" className="adm-today-link">
+            <a
+              href="/admin/reservations?status=pending"
+              className="adm-today-link"
+            >
               Pregledaj na čekanju →
             </a>
           )}
@@ -103,22 +144,29 @@ export default async function AdminDashboard() {
         <div className="adm-week">
           {weekOccupancy.map((d) => {
             const pct = Math.round((d.people / d.capacity) * 100);
-            const color = pct >= 90 ? "#c44a5a" : pct >= 60 ? "#e8a030" : "#3aaa70";
+            const color =
+              pct >= 90 ? "#c44a5a" : pct >= 60 ? "#e8a030" : "#3aaa70";
             return (
               <a
                 key={d.date}
                 href={`/admin/calendar`}
                 className="adm-week-cell"
-                style={{ borderColor: pct > 0 ? color : "rgba(62,140,140,0.15)" }}
+                style={{
+                  borderColor: pct > 0 ? color : "rgba(62,140,140,0.15)",
+                }}
               >
                 <div className="adm-week-day">{d.dayLabel}</div>
                 <div className="adm-week-value" style={{ color }}>
-                  {d.people}<span className="adm-week-cap">/{d.capacity}</span>
+                  {d.people}
+                  <span className="adm-week-cap">/{d.capacity}</span>
                 </div>
                 <div className="adm-week-bar">
                   <div
                     className="adm-week-bar-fill"
-                    style={{ width: `${Math.min(100, pct)}%`, background: color }}
+                    style={{
+                      width: `${Math.min(100, pct)}%`,
+                      background: color,
+                    }}
                   />
                 </div>
               </a>
@@ -131,10 +179,23 @@ export default async function AdminDashboard() {
       <div className="adm-section">
         <h2 className="adm-section-title">Pipeline</h2>
         <div className="adm-stats">
-          <StatCard label="Na čekanju" value={pipeline.pending} color="#e8a030" accent={pipeline.pending > 0} />
-          <StatCard label="Odobreno (čeka naplatu)" value={pipeline.approvedUnpaid} color="#4f9bbf" />
+          <StatCard
+            label="Na čekanju"
+            value={pipeline.pending}
+            color="#e8a030"
+            accent={pipeline.pending > 0}
+          />
+          <StatCard
+            label="Odobreno (čeka naplatu)"
+            value={pipeline.approvedUnpaid}
+            color="#4f9bbf"
+          />
           <StatCard label="Naplaćeno" value={pipeline.paid} color="#16a34a" />
-          <StatCard label="Otkazano" value={pipeline.cancelled} color="#c44a5a" />
+          <StatCard
+            label="Otkazano"
+            value={pipeline.cancelled}
+            color="#c44a5a"
+          />
         </div>
       </div>
 
@@ -142,8 +203,16 @@ export default async function AdminDashboard() {
       <div className="adm-section">
         <h2 className="adm-section-title">Finansije</h2>
         <div className="adm-stats">
-          <StatCard label="Ukupni depoziti" value={`${money.totalDeposits.toFixed(0)} €`} color="#3a9090" />
-          <StatCard label="Naplaćeno" value={`${money.totalRevenue.toFixed(0)} €`} color="#16a34a" />
+          <StatCard
+            label="Ukupni depoziti"
+            value={`${money.totalDeposits.toFixed(0)} €`}
+            color="#3a9090"
+          />
+          <StatCard
+            label="Naplaćeno"
+            value={`${money.totalRevenue.toFixed(0)} €`}
+            color="#16a34a"
+          />
           <StatCard
             label="Treba naplatiti"
             value={`${money.outstandingRevenue.toFixed(0)} €`}
@@ -158,15 +227,40 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
+      {/* ── KANAL DOLASKA ───────────────────────────────────────── */}
+      <div className="adm-section">
+        <h2 className="adm-section-title">Kanal dolaska</h2>
+        <div className="adm-card-plain">
+          <ReferralWheel stats={referralStats} />
+        </div>
+      </div>
+
       {/* ── PARTNERI ────────────────────────────────────────────── */}
       <div className="adm-section">
         <h2 className="adm-section-title">Partneri</h2>
         <div className="adm-stats">
-          <StatCard label="Rezervacije partnera" value={partners.bookingsCount} color="#a78bfa" />
-          <StatCard label="Ljudi (partneri)" value={partners.peopleCount} color="#a78bfa" />
-          <StatCard label="Zarada od partnera" value={`${partners.revenue.toFixed(0)} €`} color="#8b5cf6" />
+          <StatCard
+            label="Rezervacije partnera"
+            value={partners.bookingsCount}
+            color="#a78bfa"
+          />
+          <StatCard
+            label="Ljudi (partneri)"
+            value={partners.peopleCount}
+            color="#a78bfa"
+          />
+          <StatCard
+            label="Zarada od partnera"
+            value={`${partners.revenue.toFixed(0)} €`}
+            color="#8b5cf6"
+          />
           <a href="/admin/partners" className="adm-stat adm-stat-link">
-            <div className="adm-stat-value" style={{ color: "#8b5cf6", fontSize: 16 }}>Upravljaj →</div>
+            <div
+              className="adm-stat-value"
+              style={{ color: "#8b5cf6", fontSize: 16 }}
+            >
+              Upravljaj →
+            </div>
             <div className="adm-stat-label">Dodaj / obriši</div>
           </a>
         </div>
@@ -175,11 +269,19 @@ export default async function AdminDashboard() {
       {/* ── PENDING LISTA ───────────────────────────────────────── */}
       {pendingList.length > 0 && (
         <div className="adm-section">
-          <h2 className="adm-section-title">⏳ Na čekanju ({pendingList.length})</h2>
+          <h2 className="adm-section-title">
+            ⏳ Na čekanju ({pendingList.length})
+          </h2>
           <div className="adm-pending-list">
             {pendingList.map((r) => (
-              <a key={r.id} href={`/admin/reservations/${r.id}`} className="adm-pending-row">
-                <div className="adm-pending-name">{r.first_name} {r.last_name}</div>
+              <a
+                key={r.id}
+                href={`/admin/reservations/${r.id}`}
+                className="adm-pending-row"
+              >
+                <div className="adm-pending-name">
+                  {r.first_name} {r.last_name}
+                </div>
                 <div className="adm-pending-meta">
                   <span>📅 {r.arrival_date}</span>
                   <span>👥 {r.number_of_people} osoba</span>
@@ -195,16 +297,20 @@ export default async function AdminDashboard() {
       {/* ── NAVIGACIJA ──────────────────────────────────────────── */}
       <div className="adm-dash-links">
         <a href="/admin/reservations" className="adm-dash-link">
-          <span>📋</span><span>Sve rezervacije</span>
+          <span>📋</span>
+          <span>Sve rezervacije</span>
         </a>
         <a href="/admin/calendar" className="adm-dash-link">
-          <span>📅</span><span>Kalendar</span>
+          <span>📅</span>
+          <span>Kalendar</span>
         </a>
         <a href="/admin/partners" className="adm-dash-link">
-          <span>🤝</span><span>Partneri</span>
+          <span>🤝</span>
+          <span>Partneri</span>
         </a>
         <a href="/admin/links" className="adm-dash-link">
-          <span>🔗</span><span>Generiši link</span>
+          <span>🔗</span>
+          <span>Generiši link</span>
         </a>
       </div>
 
@@ -270,6 +376,8 @@ export default async function AdminDashboard() {
         .adm-stat-link { text-decoration: none; display: block; }
         .adm-stat-link:hover { border-color: rgba(139,92,246,0.4); }
 
+        .adm-card-plain { padding: 20px 24px; background: rgba(10,25,25,0.8); border: 1px solid rgba(62,140,140,0.15); border-radius: 12px; }
+
         /* Nav */
         .adm-dash-links { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
         .adm-dash-link { display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: rgba(10,25,25,0.8); border: 1px solid rgba(62,140,140,0.15); border-radius: 12px; text-decoration: none; color: rgba(168,213,213,0.7); font-size: 14px; font-weight: 500; transition: all 0.2s; }
@@ -298,26 +406,54 @@ export default async function AdminDashboard() {
 }
 
 function TodayCard({
-  icon, label, count, color, accent, children,
+  icon,
+  label,
+  count,
+  color,
+  accent,
+  children,
 }: {
-  icon: string; label: string; count: string | number; color: string; accent?: boolean; children: React.ReactNode;
+  icon: string;
+  label: string;
+  count: string | number;
+  color: string;
+  accent?: boolean;
+  children: React.ReactNode;
 }) {
   return (
     <div className={`adm-today-card ${accent ? "adm-today-card--accent" : ""}`}>
       <div className="adm-today-head">
         <span className="adm-today-icon">{icon}</span>
-        <span className="adm-today-count" style={{ color }}>{count}</span>
+        <span className="adm-today-count" style={{ color }}>
+          {count}
+        </span>
       </div>
       <div className="adm-today-label">{label}</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1 }}>{children}</div>
+      <div
+        style={{ display: "flex", flexDirection: "column", gap: 2, flex: 1 }}
+      >
+        {children}
+      </div>
     </div>
   );
 }
 
-function StatCard({ label, value, color, accent }: { label: string; value: string | number; color: string; accent?: boolean }) {
+function StatCard({
+  label,
+  value,
+  color,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  color: string;
+  accent?: boolean;
+}) {
   return (
     <div className={`adm-stat ${accent ? "adm-stat--accent" : ""}`}>
-      <div className="adm-stat-value" style={{ color }}>{value}</div>
+      <div className="adm-stat-value" style={{ color }}>
+        {value}
+      </div>
       <div className="adm-stat-label">{label}</div>
     </div>
   );
