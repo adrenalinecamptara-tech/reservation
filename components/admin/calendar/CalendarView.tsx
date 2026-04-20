@@ -352,14 +352,15 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
 
       {/* Legend */}
       <div className="cal-legend">
-        <div className="cal-legend-item"><span className="cal-sw" style={{ background: "#1e5c3c" }} /> Odobreno</div>
+        <div className="cal-legend-item"><span className="cal-sw" style={{ background: "#164e63" }} /> Odobreno</div>
+        <div className="cal-legend-item"><span className="cal-sw" style={{ background: "#0f5132" }} /> Naplaćeno</div>
         <div className="cal-legend-item"><span className="cal-sw" style={{ background: "#1e4c6c" }} /> Izmenjeno</div>
         <div className="cal-legend-item"><span className="cal-sw" style={{ background: "#6b4a18" }} /> Na čekanju</div>
         <div className="cal-legend-item"><span className="cal-sw" style={{ background: "#4c1d95" }} /> Partner</div>
       </div>
 
       <style>{`
-        .cal-root { width: 100%; }
+        .cal-root { width: 100%; min-width: 0; max-width: 100%; overflow-x: hidden; }
 
         .cal-nav { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 18px; }
         .cal-nav-title { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 700; color: #e8f5f5; min-width: 200px; text-align: center; }
@@ -401,8 +402,8 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
         .cal-tip { position: fixed; pointer-events: none; display: none; background: rgba(8,16,16,0.96); border: 1px solid rgba(58,144,144,0.3); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #e8f5f5; box-shadow: 0 8px 24px rgba(0,0,0,0.6); z-index: 1000; max-width: 260px; line-height: 1.5; }
 
         /* ── Mobile ── */
-        .cal-mobile { display: none; margin-top: 0; }
-        .cal-mobile-strip { display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 12px; scrollbar-width: none; }
+        .cal-mobile { display: none; margin-top: 0; width: 100%; max-width: 100%; min-width: 0; }
+        .cal-mobile-strip { display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 4px 2px 12px; scrollbar-width: none; width: 100%; max-width: 100%; min-width: 0; }
         .cal-mobile-strip::-webkit-scrollbar { display: none; }
         .cal-mday { flex: 0 0 auto; min-width: 48px; padding: 6px 4px 8px; background: rgba(10,25,25,0.85); border: 1px solid rgba(62,140,140,0.15); border-radius: 10px; color: rgba(168,213,213,0.8); font-family: 'DM Sans', sans-serif; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; }
         .cal-mday-wknd { border-color: rgba(232,160,48,0.2); }

@@ -80,22 +80,42 @@ export function deriveDeparture(
   return addDays(arrival, fourDay ? 3 : 2);
 }
 
-function toOccupied(r: Reservation): OccupiedReservation | null {
-  if (!r.cabin_id || !r.floor) return null;
-  return {
+interface ReservationWithUnits extends Reservation {
+  reservation_units?: Array<{ cabin_id: string; floor: Floor; people_count: number }>;
+}
+
+function reservationToOccupied(r: ReservationWithUnits): OccupiedReservation[] {
+  const departure = deriveDeparture(r.arrival_date, r.departure_date, r.package_type);
+  const base = {
     id: r.id,
-    kind: "guest",
-    cabin_id: r.cabin_id,
-    floor: r.floor,
+    kind: "guest" as const,
     arrival: r.arrival_date,
-    departure: deriveDeparture(r.arrival_date, r.departure_date, r.package_type),
+    departure,
     status: r.status,
     first_name: r.first_name,
     last_name: r.last_name,
-    number_of_people: r.number_of_people,
     package_type: r.package_type,
     voucher_number: r.voucher_number,
   };
+  const units = r.reservation_units ?? [];
+  if (units.length > 0) {
+    return units.map((u) => ({
+      ...base,
+      cabin_id: u.cabin_id,
+      floor: u.floor,
+      number_of_people: u.people_count,
+    }));
+  }
+  // Fallback for rezervacije bez reservation_units (posle cancel/pre dodele): koristi legacy polja
+  if (r.cabin_id && r.floor) {
+    return [{
+      ...base,
+      cabin_id: r.cabin_id,
+      floor: r.floor,
+      number_of_people: r.number_of_people,
+    }];
+  }
+  return [];
 }
 
 interface PartnerBookingRow {
@@ -139,7 +159,7 @@ export async function getMonthReservations(
   const [resResult, partnerResult] = await Promise.all([
     supabase
       .from("reservations")
-      .select("*")
+      .select("*, reservation_units(cabin_id, floor, people_count)")
       .neq("status", "cancelled")
       .lt("arrival_date", endExclusive),
     supabase
@@ -151,9 +171,8 @@ export async function getMonthReservations(
   if (resResult.error) throw new Error(`Failed to load month reservations: ${resResult.error.message}`);
   if (partnerResult.error) throw new Error(`Failed to load partner bookings: ${partnerResult.error.message}`);
 
-  const guestOccupied = ((resResult.data ?? []) as Reservation[])
-    .map(toOccupied)
-    .filter((r): r is OccupiedReservation => r !== null)
+  const guestOccupied = ((resResult.data ?? []) as ReservationWithUnits[])
+    .flatMap(reservationToOccupied)
     .filter((r) => rangesOverlap(r.arrival, r.departure, start, endExclusive));
 
   const partnerRows = (partnerResult.data ?? []) as unknown as PartnerBookingRow[];
@@ -175,7 +194,7 @@ export async function getAvailableUnits(
     supabase.from("cabins").select().eq("active", true).order("name"),
     supabase
       .from("reservations")
-      .select("*")
+      .select("*, reservation_units(cabin_id, floor, people_count)")
       .neq("status", "cancelled")
       .lt("arrival_date", departure),
     supabase
@@ -189,10 +208,9 @@ export async function getAvailableUnits(
   if (partnersResult.error) throw new Error(partnersResult.error.message);
 
   const cabins = (cabinsResult.data ?? []) as Cabin[];
-  const guestReservations = ((reservationsResult.data ?? []) as Reservation[])
+  const guestReservations = ((reservationsResult.data ?? []) as ReservationWithUnits[])
     .filter((r) => !excludeReservationId || r.id !== excludeReservationId)
-    .map(toOccupied)
-    .filter((r): r is OccupiedReservation => r !== null)
+    .flatMap(reservationToOccupied)
     .filter((r) => rangesOverlap(r.arrival, r.departure, arrival, departure));
 
   const partnerRows = (partnersResult.data ?? []) as unknown as PartnerBookingRow[];

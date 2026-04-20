@@ -138,6 +138,22 @@ export interface ReservationUpdate {
   paid_by?: string | null;
 }
 
+export interface ReservationUnit {
+  id: string;
+  reservation_id: string;
+  cabin_id: string;
+  floor: Floor;
+  people_count: number;
+  created_at: string;
+  cabin?: Cabin;
+}
+
+export interface ReservationUnitInput {
+  cabin_id: string;
+  floor: Floor;
+  people_count: number;
+}
+
 export interface Partner {
   id: string;
   name: string;
@@ -209,6 +225,11 @@ export type Database = {
         Row: PartnerBooking;
         Insert: PartnerBookingInsert;
         Update: Partial<PartnerBookingInsert>;
+      };
+      reservation_units: {
+        Row: ReservationUnit;
+        Insert: Omit<ReservationUnit, "id" | "created_at">;
+        Update: Partial<Omit<ReservationUnit, "id" | "created_at">>;
       };
     };
     Enums: {

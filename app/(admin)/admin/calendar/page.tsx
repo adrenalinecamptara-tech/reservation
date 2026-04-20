@@ -40,8 +40,9 @@ export default async function CalendarPage({ searchParams }: Props) {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@700&family=DM+Sans:wght@300;400;500;600&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { overflow-x: hidden; max-width: 100%; }
         body { background: #080f0f; color: #e8f5f5; font-family: 'DM Sans', sans-serif; }
-        .adm-cal-page { max-width: 1400px; margin: 0 auto; padding: 40px 24px; }
+        .adm-cal-page { max-width: 1400px; margin: 0 auto; padding: 40px 24px; width: 100%; }
         .adm-back { font-size: 13px; color: rgba(168,213,213,0.4); text-decoration: none; display: block; margin-bottom: 8px; }
         .adm-back:hover { color: rgba(168,213,213,0.8); }
         .adm-cal-top { margin-bottom: 20px; }

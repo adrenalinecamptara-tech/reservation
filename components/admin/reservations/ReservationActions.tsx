@@ -43,9 +43,29 @@ export function ReservationActions({ reservation, cabins }: Props) {
 
   // ── Cabin & notes ──────────────────────────────────────────
   const [adminNotes, setAdminNotes] = useState(reservation.admin_notes ?? "");
-  const [cabinId, setCabinId] = useState(reservation.cabin_id ?? "");
-  const [floor, setFloor] = useState<"ground" | "upper" | "">(reservation.floor ?? "");
   const [availability, setAvailability] = useState<AvailableUnit[] | null>(null);
+
+  interface UnitRow { cabin_id: string; floor: "ground" | "upper" | ""; people_count: number }
+  const [units, setUnits] = useState<UnitRow[]>([]);
+  const [unitsLoaded, setUnitsLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/reservations/${reservation.id}/units`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows: Array<{ cabin_id: string; floor: "ground" | "upper"; people_count: number }>) => {
+        if (Array.isArray(rows) && rows.length > 0) {
+          setUnits(rows.map((r) => ({ cabin_id: r.cabin_id, floor: r.floor, people_count: r.people_count })));
+        } else if (reservation.cabin_id && reservation.floor) {
+          setUnits([{ cabin_id: reservation.cabin_id, floor: reservation.floor, people_count: reservation.number_of_people }]);
+        } else {
+          setUnits([{ cabin_id: "", floor: "", people_count: reservation.number_of_people }]);
+        }
+      })
+      .catch(() => {
+        setUnits([{ cabin_id: reservation.cabin_id ?? "", floor: reservation.floor ?? "", people_count: reservation.number_of_people }]);
+      })
+      .finally(() => setUnitsLoaded(true));
+  }, [reservation.id, reservation.cabin_id, reservation.floor, reservation.number_of_people]);
 
   const effectiveDeparture = useMemo(
     () => deriveDepartureClient(reservation.arrival_date, reservation.departure_date, reservation.package_type),
@@ -63,26 +83,28 @@ export function ReservationActions({ reservation, cabins }: Props) {
   const unitLookup = (cId: string, fl: "ground" | "upper") =>
     availability?.find((u) => u.cabin_id === cId && u.floor === fl);
 
-  const floorOptions: Array<{ value: "ground" | "upper"; label: string; disabled: boolean; conflictName?: string }> = useMemo(() => {
-    if (!cabinId) return [];
-    const g = unitLookup(cabinId, "ground");
-    const u = unitLookup(cabinId, "upper");
-    return [
-      {
-        value: "ground",
-        label: "Prizemlje (6 mesta)",
-        disabled: g ? !g.available && reservation.floor !== "ground" : false,
-        conflictName: g?.conflict ? `${g.conflict.first_name} ${g.conflict.last_name}` : undefined,
-      },
-      {
-        value: "upper",
-        label: "Sprat (4 mesta)",
-        disabled: u ? !u.available && reservation.floor !== "upper" : false,
-        conflictName: u?.conflict ? `${u.conflict.first_name} ${u.conflict.last_name}` : undefined,
-      },
-    ];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cabinId, availability, reservation.floor]);
+  const cabinCapacity = (cId: string, fl: "ground" | "upper"): number => {
+    const c = cabins.find((x) => x.id === cId);
+    if (!c) return 0;
+    return fl === "ground" ? c.ground_beds : c.upper_beds;
+  };
+
+  const isUnitUsedElsewhere = (idx: number, cId: string, fl: "ground" | "upper") =>
+    units.some((u, i) => i !== idx && u.cabin_id === cId && u.floor === fl);
+
+  const totalPeopleInUnits = units.reduce((s, u) => s + (u.people_count || 0), 0);
+  const peopleRemaining = reservation.number_of_people - totalPeopleInUnits;
+
+  const updateUnit = (idx: number, patch: Partial<UnitRow>) => {
+    setUnits((prev) => prev.map((u, i) => (i === idx ? { ...u, ...patch } : u)));
+  };
+  const addUnit = () => {
+    const defaultPeople = Math.max(1, peopleRemaining);
+    setUnits((prev) => [...prev, { cabin_id: "", floor: "", people_count: defaultPeople }]);
+  };
+  const removeUnit = (idx: number) => {
+    setUnits((prev) => prev.filter((_, i) => i !== idx));
+  };
 
   const availabilitySummary = useMemo(() => {
     if (!availability) return "";
@@ -226,10 +248,31 @@ export function ReservationActions({ reservation, cabins }: Props) {
   };
 
   const handleAssignCabin = async () => {
-    if (!cabinId || !floor) { alert("Odaberi bungalov i sprat"); return; }
+    for (const u of units) {
+      if (!u.cabin_id || !u.floor) { alert("Sve sobe moraju imati izabran bungalov i sprat."); return; }
+      if (!u.people_count || u.people_count < 1) { alert("Svaka soba mora imati bar 1 osobu."); return; }
+      const cap = cabinCapacity(u.cabin_id, u.floor);
+      if (u.people_count > cap) { alert(`Izabrana soba prima max ${cap} osoba.`); return; }
+    }
+    if (totalPeopleInUnits !== reservation.number_of_people) {
+      alert(`Zbir osoba (${totalPeopleInUnits}) mora biti jednak broju gostiju (${reservation.number_of_people}).`);
+      return;
+    }
+    const keys = new Set<string>();
+    for (const u of units) {
+      const k = `${u.cabin_id}:${u.floor}`;
+      if (keys.has(k)) { alert("Ista soba je izabrana više puta."); return; }
+      keys.add(k);
+    }
     setLoading("cabin");
     try {
-      const res = await patch({ cabin_id: cabinId, floor });
+      const res = await fetch(`/api/reservations/${reservation.id}/units`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          units: units.map((u) => ({ cabin_id: u.cabin_id, floor: u.floor, people_count: u.people_count })),
+        }),
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error ?? "Greška pri čuvanju smeštaja");
@@ -438,40 +481,122 @@ export function ReservationActions({ reservation, cabins }: Props) {
         </section>
       )}
 
-      {/* ── Cabin assignment ── */}
+      {/* ── Cabin assignment (multi-unit) ── */}
       <section className="adm-card">
         <h2 className="adm-card-title">Smeštaj</h2>
-        <div className="adm-cabin-row">
-          <select className="adm-input" value={cabinId}
-            onChange={(e) => { setCabinId(e.target.value); setFloor(""); }}>
-            <option value="">Odaberi bungalov</option>
-            {cabins.map((c) => {
-              const g = availability?.find((u) => u.cabin_id === c.id && u.floor === "ground");
-              const up = availability?.find((u) => u.cabin_id === c.id && u.floor === "upper");
-              const bothTaken = g && up && !g.available && !up.available && reservation.cabin_id !== c.id;
-              return (
-                <option key={c.id} value={c.id} disabled={bothTaken ?? false}>
-                  {c.name}{bothTaken ? " — zauzet" : ""}
-                </option>
-              );
-            })}
-          </select>
-          <select className="adm-input" value={floor}
-            onChange={(e) => setFloor(e.target.value as "ground" | "upper")}>
-            <option value="">Sprat</option>
-            {floorOptions.map((opt) => (
-              <option key={opt.value} value={opt.value} disabled={opt.disabled}>
-                {opt.label}{opt.disabled && opt.conflictName ? ` — ${opt.conflictName}` : ""}
-              </option>
-            ))}
-            {floorOptions.length === 0 && (
-              <>
-                <option value="ground">Prizemlje (6 mesta)</option>
-                <option value="upper">Sprat (4 mesta)</option>
-              </>
-            )}
-          </select>
+        <div className="adm-units-hdr">
+          <span>Ukupno gostiju: <strong>{reservation.number_of_people}</strong></span>
+          <span>
+            Raspoređeno: <strong style={{ color: totalPeopleInUnits === reservation.number_of_people ? "#a7e8c5" : "#ffd89a" }}>
+              {totalPeopleInUnits}
+            </strong>
+            {peopleRemaining > 0 && ` · još ${peopleRemaining} bez sobe`}
+            {peopleRemaining < 0 && ` · ${Math.abs(peopleRemaining)} previše`}
+          </span>
         </div>
+
+        {unitsLoaded && units.map((u, idx) => {
+          const cap = u.cabin_id && u.floor ? cabinCapacity(u.cabin_id, u.floor as "ground" | "upper") : 0;
+          const conflict = u.cabin_id && u.floor
+            ? unitLookup(u.cabin_id, u.floor as "ground" | "upper")
+            : null;
+          const blockedByOther = conflict && !conflict.available;
+          const duplicated = u.cabin_id && u.floor && isUnitUsedElsewhere(idx, u.cabin_id, u.floor as "ground" | "upper");
+          return (
+            <div key={idx} className="adm-unit-row">
+              <div className="adm-unit-idx">Soba {idx + 1}</div>
+              <div className="adm-unit-fields">
+                <select
+                  className="adm-input"
+                  value={u.cabin_id}
+                  onChange={(e) => updateUnit(idx, { cabin_id: e.target.value, floor: "" })}
+                >
+                  <option value="">Bungalov</option>
+                  {cabins.map((c) => {
+                    const g = unitLookup(c.id, "ground");
+                    const up = unitLookup(c.id, "upper");
+                    const bothTaken = availability !== null && g && up && !g.available && !up.available;
+                    const gUsedHere = units.some((x, i) => i !== idx && x.cabin_id === c.id && x.floor === "ground");
+                    const upUsedHere = units.some((x, i) => i !== idx && x.cabin_id === c.id && x.floor === "upper");
+                    const disabled = !!bothTaken || (gUsedHere && upUsedHere);
+                    const suffix = availability === null
+                      ? ""
+                      : bothTaken || (gUsedHere && upUsedHere)
+                        ? " — zauzet"
+                        : (g && !g.available) || (up && !up.available) || gUsedHere || upUsedHere
+                          ? " — delimično"
+                          : " — slobodno";
+                    return (
+                      <option key={c.id} value={c.id} disabled={disabled}>
+                        {c.name}{suffix}
+                      </option>
+                    );
+                  })}
+                </select>
+                <select
+                  className="adm-input"
+                  value={u.floor}
+                  onChange={(e) => updateUnit(idx, { floor: e.target.value as "ground" | "upper" })}
+                  disabled={!u.cabin_id}
+                >
+                  <option value="">Sprat</option>
+                  {u.cabin_id && (() => {
+                    const g = unitLookup(u.cabin_id, "ground");
+                    const up = unitLookup(u.cabin_id, "upper");
+                    const gBusyElsewhere = units.some((x, i) => i !== idx && x.cabin_id === u.cabin_id && x.floor === "ground");
+                    const upBusyElsewhere = units.some((x, i) => i !== idx && x.cabin_id === u.cabin_id && x.floor === "upper");
+                    const gBusy = (availability !== null && g && !g.available) || gBusyElsewhere;
+                    const upBusy = (availability !== null && up && !up.available) || upBusyElsewhere;
+                    const gLabel = gBusy
+                      ? ` — ${gBusyElsewhere ? "već izabrano" : g?.conflict ? `${g.conflict.first_name} ${g.conflict.last_name}` : "zauzeto"}`
+                      : "";
+                    const upLabel = upBusy
+                      ? ` — ${upBusyElsewhere ? "već izabrano" : up?.conflict ? `${up.conflict.first_name} ${up.conflict.last_name}` : "zauzeto"}`
+                      : "";
+                    return (
+                      <>
+                        <option value="ground" disabled={gBusy}>
+                          Prizemlje ({cabinCapacity(u.cabin_id, "ground")} mesta){gLabel}
+                        </option>
+                        <option value="upper" disabled={upBusy}>
+                          Sprat ({cabinCapacity(u.cabin_id, "upper")} mesta){upLabel}
+                        </option>
+                      </>
+                    );
+                  })()}
+                </select>
+                <input
+                  className="adm-input adm-unit-people"
+                  type="number"
+                  min={1}
+                  max={cap || undefined}
+                  value={u.people_count}
+                  onChange={(e) => updateUnit(idx, { people_count: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                  placeholder="Ljudi"
+                />
+                {units.length > 1 && (
+                  <button type="button" className="adm-unit-remove" onClick={() => removeUnit(idx)} title="Ukloni sobu">
+                    ✕
+                  </button>
+                )}
+              </div>
+              {(blockedByOther || duplicated || (cap > 0 && u.people_count > cap)) && (
+                <div className="adm-unit-warn">
+                  {duplicated && "Ista soba već izabrana u drugom redu. "}
+                  {blockedByOther && conflict?.conflict && `Zauzeto: ${conflict.conflict.first_name} ${conflict.conflict.last_name}. `}
+                  {cap > 0 && u.people_count > cap && `Max ${cap} mesta u ovoj sobi. `}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {peopleRemaining > 0 && (
+          <button type="button" className="adm-btn adm-btn--secondary adm-unit-add" onClick={addUnit}>
+            + Dodaj još jednu sobu (još {peopleRemaining})
+          </button>
+        )}
+
         {availability && (
           <div className="adm-cabin-hint">
             {availabilitySummary
@@ -573,6 +698,16 @@ export function ReservationActions({ reservation, cabins }: Props) {
 
         .adm-cabin-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .adm-cabin-hint { font-size: 11px; color: rgba(168,213,213,0.55); margin-top: 8px; line-height: 1.5; }
+        .adm-units-hdr { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: rgba(168,213,213,0.65); margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(62,140,140,0.12); flex-wrap: wrap; }
+        .adm-unit-row { padding: 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(62,140,140,0.12); border-radius: 8px; margin-bottom: 8px; }
+        .adm-unit-idx { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(168,213,213,0.5); margin-bottom: 6px; }
+        .adm-unit-fields { display: grid; grid-template-columns: 1fr 1fr 80px auto; gap: 6px; align-items: center; }
+        .adm-unit-people { text-align: center; }
+        .adm-unit-remove { background: rgba(196,30,58,0.15); color: #e87a8a; border: 1px solid rgba(196,30,58,0.3); border-radius: 6px; width: 32px; height: 36px; cursor: pointer; font-size: 14px; }
+        .adm-unit-remove:hover { background: rgba(196,30,58,0.25); }
+        .adm-unit-warn { margin-top: 6px; font-size: 11px; color: #ffb4c0; }
+        .adm-unit-add { margin-bottom: 8px; }
+        @media (max-width: 600px) { .adm-unit-fields { grid-template-columns: 1fr 1fr; } .adm-unit-fields .adm-unit-people { grid-column: 1 / 2; } .adm-unit-remove { grid-column: 2 / 3; width: 100%; } }
         .adm-input { width: 100%; padding: 9px 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(62,140,140,0.2); border-radius: 8px; color: #e8f5f5; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; }
         .adm-input:focus { border-color: rgba(58,144,144,0.5); }
         .adm-input option { background: #0f2020; }
