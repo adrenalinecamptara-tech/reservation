@@ -312,6 +312,13 @@ export interface DashboardData {
     partnerRevenue: number;
   };
   partners: { bookingsCount: number; peopleCount: number; revenue: number };
+  holds: {
+    total: number;
+    active: number;
+    expired: number;
+    converted: number;
+    cancelled: number;
+  };
   pendingList: Reservation[];
   referralStats: Array<{ source: string; count: number; percent: number }>;
 }
@@ -322,7 +329,7 @@ export interface DashboardData {
  */
 export async function getDashboardData(): Promise<DashboardData> {
   const supabase = createServiceClient();
-  const [resResult, partnerResult] = await Promise.all([
+  const [resResult, partnerResult, holdsResult] = await Promise.all([
     supabase
       .from("reservations")
       .select("*, cabin:cabins(*)")
@@ -330,6 +337,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     supabase
       .from("partner_bookings")
       .select("number_of_people, price_per_person"),
+    supabase.from("reservation_holds").select("status, hold_until_date"),
   ]);
   const { data, error } = resResult;
   if (error) throw new Error(`Failed to load dashboard: ${error.message}`);
@@ -337,7 +345,12 @@ export async function getDashboardData(): Promise<DashboardData> {
     throw new Error(
       `Failed to load partner bookings: ${partnerResult.error.message}`,
     );
+  if (holdsResult.error)
+    throw new Error(
+      `Failed to load reservation holds: ${holdsResult.error.message}`,
+    );
   const partnerRows = partnerResult.data ?? [];
+  const holdRows = holdsResult.data ?? [];
 
   const all = (data ?? []) as Reservation[];
   const active = all.filter((r) => r.status !== "cancelled");
@@ -471,6 +484,21 @@ export async function getDashboardData(): Promise<DashboardData> {
     0,
   );
 
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const holds = {
+    total: holdRows.length,
+    active: holdRows.filter(
+      (h) => h.status === "active" && (h.hold_until_date ?? "") >= todayIso,
+    ).length,
+    expired: holdRows.filter(
+      (h) =>
+        h.status === "expired" ||
+        (h.status === "active" && (h.hold_until_date ?? "") < todayIso),
+    ).length,
+    converted: holdRows.filter((h) => h.status === "converted").length,
+    cancelled: holdRows.filter((h) => h.status === "cancelled").length,
+  };
+
   return {
     today,
     todayLabel,
@@ -491,6 +519,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       peopleCount: partnerPeople,
       revenue: partnerRevenue,
     },
+    holds,
     pendingList,
     referralStats,
   };

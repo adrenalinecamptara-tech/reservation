@@ -10,6 +10,7 @@ export type ReservationStatus =
   | "cancelled"
   | "modified"
   | "paid";
+export type HoldStatus = "active" | "expired" | "converted" | "cancelled";
 export type Floor = "ground" | "upper";
 
 export interface Package {
@@ -209,6 +210,58 @@ export interface PartnerBookingInsert {
   created_by?: string | null;
 }
 
+export interface ReservationHold {
+  id: string;
+  first_name: string;
+  last_name: string;
+  contact: string;
+  cabin_id: string;
+  floor: Floor;
+  arrival_date: string;
+  departure_date: string;
+  number_of_people: number;
+  hold_until_date: string;
+  notes: string | null;
+  status: HoldStatus;
+  converted_reservation_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  cabin?: Cabin;
+}
+
+export interface ReservationHoldInsert {
+  first_name: string;
+  last_name: string;
+  contact: string;
+  cabin_id: string;
+  floor: Floor;
+  arrival_date: string;
+  departure_date: string;
+  number_of_people: number;
+  hold_until_date: string;
+  notes?: string | null;
+  status?: HoldStatus;
+  converted_reservation_id?: string | null;
+  created_by?: string | null;
+}
+
+export interface ReservationHoldUnit {
+  id: string;
+  reservation_hold_id: string;
+  cabin_id: string;
+  floor: Floor;
+  people_count: number;
+  created_at: string;
+  cabin?: Cabin;
+}
+
+export interface ReservationHoldUnitInput {
+  cabin_id: string;
+  floor: Floor;
+  people_count: number;
+}
+
 // Minimal Database type wrapper for Supabase client generics
 export type Database = {
   public: {
@@ -247,6 +300,16 @@ export type Database = {
         Row: ReservationUnit;
         Insert: Omit<ReservationUnit, "id" | "created_at">;
         Update: Partial<Omit<ReservationUnit, "id" | "created_at">>;
+      };
+      reservation_holds: {
+        Row: ReservationHold;
+        Insert: ReservationHoldInsert;
+        Update: Partial<ReservationHoldInsert>;
+      };
+      reservation_hold_units: {
+        Row: ReservationHoldUnit;
+        Insert: Omit<ReservationHoldUnit, "id" | "created_at">;
+        Update: Partial<Omit<ReservationHoldUnit, "id" | "created_at">>;
       };
     };
     Enums: {

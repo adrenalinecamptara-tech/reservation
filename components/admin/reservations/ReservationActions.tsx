@@ -1017,6 +1017,7 @@ export function ReservationActions({ reservation, cabins }: Props) {
         @media (max-width: 600px) { .adm-unit-fields { grid-template-columns: 1fr 1fr; } .adm-unit-fields .adm-unit-people { grid-column: 1 / 2; } .adm-unit-remove { grid-column: 2 / 3; width: 100%; } }
         .adm-input { width: 100%; padding: 9px 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(62,140,140,0.2); border-radius: 8px; color: #e8f5f5; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; }
         .adm-input:focus { border-color: rgba(58,144,144,0.5); }
+        .adm-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) brightness(2); opacity: 1; cursor: pointer; }
         .adm-input option { background: #0f2020; }
         .adm-textarea { resize: vertical; min-height: 70px; }
       `}</style>

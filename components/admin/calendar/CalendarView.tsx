@@ -13,8 +13,18 @@ interface Props {
 }
 
 const MONTH_NAMES = [
-  "Januar", "Februar", "Mart", "April", "Maj", "Jun",
-  "Jul", "Avgust", "Septembar", "Oktobar", "Novembar", "Decembar",
+  "Januar",
+  "Februar",
+  "Mart",
+  "April",
+  "Maj",
+  "Jun",
+  "Jul",
+  "Avgust",
+  "Septembar",
+  "Oktobar",
+  "Novembar",
+  "Decembar",
 ];
 
 const DAY_SHORT = ["N", "P", "U", "S", "Č", "P", "S"];
@@ -70,15 +80,61 @@ function formatDateRange(arrival: string, departure: string): string {
 }
 
 function statusMeta(r: OccupiedReservation) {
-  if (r.kind === "partner") return { label: "Partner", bg: "#4c1d95", text: "#e9d5ff", border: "#8b5cf6" };
-  if (r.status === "pending") return { label: "Na čekanju", bg: "#6b4a18", text: "#ffd89a", border: "#a47324" };
-  if (r.status === "modified") return { label: "Izmenjeno", bg: "#1e4c6c", text: "#bfddff", border: "#3b78a8" };
-  if (r.status === "paid") return { label: "Naplaćeno", bg: "#0f5132", text: "#a7f3c4", border: "#16a34a" };
-  return { label: "Odobreno", bg: "#164e63", text: "#bee5f0", border: "#0e7490" };
+  if (r.kind === "partner")
+    return {
+      label: "Partner",
+      bg: "#4c1d95",
+      text: "#e9d5ff",
+      border: "#8b5cf6",
+    };
+  if (r.kind === "hold") {
+    if (r.status === "hold_expired") {
+      return {
+        label: "Hold istekao",
+        bg: "#7a2e1f",
+        text: "#ffd2c7",
+        border: "#d05b41",
+      };
+    }
+    return {
+      label: "Hold aktivan",
+      bg: "#5a3d14",
+      text: "#ffe1a8",
+      border: "#c7922f",
+    };
+  }
+  if (r.status === "pending")
+    return {
+      label: "Na čekanju",
+      bg: "#6b4a18",
+      text: "#ffd89a",
+      border: "#a47324",
+    };
+  if (r.status === "modified")
+    return {
+      label: "Izmenjeno",
+      bg: "#1e4c6c",
+      text: "#bfddff",
+      border: "#3b78a8",
+    };
+  if (r.status === "paid")
+    return {
+      label: "Naplaćeno",
+      bg: "#0f5132",
+      text: "#a7f3c4",
+      border: "#16a34a",
+    };
+  return {
+    label: "Odobreno",
+    bg: "#164e63",
+    text: "#bee5f0",
+    border: "#0e7490",
+  };
 }
 
 function displayName(r: OccupiedReservation): string {
   if (r.kind === "partner") return r.partner_name ?? r.first_name;
+  if (r.kind === "hold") return `${r.first_name} ${r.last_name}`.trim();
   return `${r.first_name} ${r.last_name}`.trim();
 }
 
@@ -122,7 +178,8 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
     const map = new Map<string, Bar[]>();
     for (const r of reservations) {
       const start = r.arrival < monthStart ? monthStart : r.arrival;
-      const endExcl = r.departure > monthEndExclusive ? monthEndExclusive : r.departure;
+      const endExcl =
+        r.departure > monthEndExclusive ? monthEndExclusive : r.departure;
       if (start >= endExcl) continue;
       const startIdx = daysBetween(monthStart, start);
       const span = daysBetween(start, endExcl);
@@ -144,18 +201,19 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
   }, [reservations, monthStart, monthEndExclusive, totalDays]);
 
   const prevHref = (() => {
-    const prev = month === 1 ? { y: year - 1, m: 12 } : { y: year, m: month - 1 };
+    const prev =
+      month === 1 ? { y: year - 1, m: 12 } : { y: year, m: month - 1 };
     return `/admin/calendar?year=${prev.y}&month=${prev.m}`;
   })();
   const nextHref = (() => {
-    const next = month === 12 ? { y: year + 1, m: 1 } : { y: year, m: month + 1 };
+    const next =
+      month === 12 ? { y: year + 1, m: 1 } : { y: year, m: month + 1 };
     return `/admin/calendar?year=${next.y}&month=${next.m}`;
   })();
   const todayHref = `/admin/calendar?year=${new Date().getFullYear()}&month=${new Date().getMonth() + 1}`;
 
   // ── Mobile: selected day ──
-  const defaultMobileDay =
-    days.find((d) => d === todayIso) ?? days[0];
+  const defaultMobileDay = days.find((d) => d === todayIso) ?? days[0];
   const [mobileDay, setMobileDay] = useState(defaultMobileDay);
 
   const unitsForDay = (dayIso: string) => {
@@ -164,7 +222,7 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
       const bars = barsByUnit.get(key) ?? [];
       const bar = bars.find(
         (b) =>
-          b.reservation.arrival <= dayIso && b.reservation.departure > dayIso
+          b.reservation.arrival <= dayIso && b.reservation.departure > dayIso,
       );
       return { unit: u, reservation: bar?.reservation ?? null };
     });
@@ -174,12 +232,18 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
     <div className="cal-root">
       {/* Month navigator */}
       <div className="cal-nav">
-        <a href={prevHref} className="cal-nav-btn" aria-label="Prethodni mesec">←</a>
+        <a href={prevHref} className="cal-nav-btn" aria-label="Prethodni mesec">
+          ←
+        </a>
         <div className="cal-nav-title">
           {MONTH_NAMES[month - 1]} {year}
         </div>
-        <a href={todayHref} className="cal-nav-today">Danas</a>
-        <a href={nextHref} className="cal-nav-btn" aria-label="Sledeći mesec">→</a>
+        <a href={todayHref} className="cal-nav-today">
+          Danas
+        </a>
+        <a href={nextHref} className="cal-nav-btn" aria-label="Sledeći mesec">
+          →
+        </a>
       </div>
 
       {/* ── Desktop Gantt ── */}
@@ -187,8 +251,15 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
         <div className="cal-gantt-wrap">
           {/* Header row: day numbers */}
           <div className="cal-gantt-row cal-gantt-header-row">
-            <div className="cal-gantt-label cal-gantt-header-label">Jedinica</div>
-            <div className="cal-gantt-track" style={{ gridTemplateColumns: `repeat(${totalDays}, minmax(30px, 1fr))` }}>
+            <div className="cal-gantt-label cal-gantt-header-label">
+              Jedinica
+            </div>
+            <div
+              className="cal-gantt-track"
+              style={{
+                gridTemplateColumns: `repeat(${totalDays}, minmax(30px, 1fr))`,
+              }}
+            >
               {days.map((d) => {
                 const dNum = d.slice(8, 10);
                 const w = weekdayIndex(d);
@@ -217,12 +288,17 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
                   <div className="cal-gantt-label-name">{u.cabin_name}</div>
                   <div className="cal-gantt-label-floor">
                     {u.floor === "ground" ? "Prizemlje" : "Sprat"}
-                    <span className="cal-gantt-label-beds"> · {u.beds} mesta</span>
+                    <span className="cal-gantt-label-beds">
+                      {" "}
+                      · {u.beds} mesta
+                    </span>
                   </div>
                 </div>
                 <div
                   className="cal-gantt-track"
-                  style={{ gridTemplateColumns: `repeat(${totalDays}, minmax(30px, 1fr))` }}
+                  style={{
+                    gridTemplateColumns: `repeat(${totalDays}, minmax(30px, 1fr))`,
+                  }}
                 >
                   {days.map((d) => (
                     <div
@@ -250,15 +326,26 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
                           borderBottomRightRadius: bar.clippedRight ? 0 : 4,
                         }}
                         onClick={() => {
-                          if (bar.reservation.kind === "partner") router.push(`/admin/partners`);
-                          else router.push(`/admin/reservations/${bar.reservation.id}`);
+                          if (bar.reservation.kind === "partner")
+                            router.push(`/admin/partners`);
+                          else if (bar.reservation.kind === "hold")
+                            router.push(`/admin/holds`);
+                          else
+                            router.push(
+                              `/admin/reservations/${bar.reservation.id}`,
+                            );
                         }}
-                        onMouseEnter={(e) => showTip(e.currentTarget, bar.reservation)}
+                        onMouseEnter={(e) =>
+                          showTip(e.currentTarget, bar.reservation)
+                        }
                         onMouseLeave={hideTip}
                       >
                         <span className="cal-bar-text">
                           {displayName(bar.reservation)}
-                          <span className="cal-bar-meta"> · {bar.reservation.number_of_people}p</span>
+                          <span className="cal-bar-meta">
+                            {" "}
+                            · {bar.reservation.number_of_people}p
+                          </span>
                         </span>
                       </button>
                     );
@@ -285,7 +372,8 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
             const occupiedCount = units.filter((u) => {
               const key = `${u.cabin_id}:${u.floor}`;
               return (barsByUnit.get(key) ?? []).some(
-                (b) => b.reservation.arrival <= d && b.reservation.departure > d
+                (b) =>
+                  b.reservation.arrival <= d && b.reservation.departure > d,
               );
             }).length;
             return (
@@ -297,7 +385,9 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
                 <div className="cal-mday-name">{DAY_SHORT[w]}</div>
                 <div className="cal-mday-num">{dNum}</div>
                 <div className="cal-mday-dots">
-                  {Array.from({ length: Math.min(occupiedCount, units.length) }).map((_, i) => (
+                  {Array.from({
+                    length: Math.min(occupiedCount, units.length),
+                  }).map((_, i) => (
                     <span key={i} className="cal-mday-dot" />
                   ))}
                 </div>
@@ -317,12 +407,19 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
                 return (
                   <div key={key} className="cal-munit cal-munit-free">
                     <div className="cal-munit-label">{unit.label}</div>
-                    <div className="cal-munit-status cal-status-free">Slobodno</div>
+                    <div className="cal-munit-status cal-status-free">
+                      Slobodno
+                    </div>
                   </div>
                 );
               }
               const meta = statusMeta(reservation);
-              const href = reservation.kind === "partner" ? `/admin/partners` : `/admin/reservations/${reservation.id}`;
+              const href =
+                reservation.kind === "partner"
+                  ? `/admin/partners`
+                  : reservation.kind === "hold"
+                    ? `/admin/holds`
+                    : `/admin/reservations/${reservation.id}`;
               return (
                 <a
                   key={key}
@@ -335,7 +432,14 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
                     {displayName(reservation)}
                   </div>
                   <div className="cal-munit-meta">
-                    {reservation.number_of_people} osoba · {formatDateRange(reservation.arrival, reservation.departure)}
+                    {reservation.number_of_people} osoba ·{" "}
+                    {formatDateRange(
+                      reservation.arrival,
+                      reservation.departure,
+                    )}
+                    {reservation.kind === "hold" && reservation.hold_until_date
+                      ? ` · uplata do ${reservation.hold_until_date}`
+                      : ""}
                   </div>
                   <div
                     className="cal-munit-badge"
@@ -352,11 +456,32 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
 
       {/* Legend */}
       <div className="cal-legend">
-        <div className="cal-legend-item"><span className="cal-sw" style={{ background: "#164e63" }} /> Odobreno</div>
-        <div className="cal-legend-item"><span className="cal-sw" style={{ background: "#0f5132" }} /> Naplaćeno</div>
-        <div className="cal-legend-item"><span className="cal-sw" style={{ background: "#1e4c6c" }} /> Izmenjeno</div>
-        <div className="cal-legend-item"><span className="cal-sw" style={{ background: "#6b4a18" }} /> Na čekanju</div>
-        <div className="cal-legend-item"><span className="cal-sw" style={{ background: "#4c1d95" }} /> Partner</div>
+        <div className="cal-legend-item">
+          <span className="cal-sw" style={{ background: "#164e63" }} /> Odobreno
+        </div>
+        <div className="cal-legend-item">
+          <span className="cal-sw" style={{ background: "#0f5132" }} />{" "}
+          Naplaćeno
+        </div>
+        <div className="cal-legend-item">
+          <span className="cal-sw" style={{ background: "#1e4c6c" }} />{" "}
+          Izmenjeno
+        </div>
+        <div className="cal-legend-item">
+          <span className="cal-sw" style={{ background: "#6b4a18" }} /> Na
+          čekanju
+        </div>
+        <div className="cal-legend-item">
+          <span className="cal-sw" style={{ background: "#5a3d14" }} /> Hold
+          aktivan
+        </div>
+        <div className="cal-legend-item">
+          <span className="cal-sw" style={{ background: "#7a2e1f" }} /> Hold
+          istekao
+        </div>
+        <div className="cal-legend-item">
+          <span className="cal-sw" style={{ background: "#4c1d95" }} /> Partner
+        </div>
       </div>
 
       <style>{`
@@ -449,11 +574,16 @@ function showTip(anchor: HTMLElement, r: OccupiedReservation) {
   const tip = document.getElementById("cal-tip");
   if (!tip) return;
   const meta = statusMeta(r);
-  const name = r.kind === "partner" ? (r.partner_name ?? r.first_name) : `${r.first_name} ${r.last_name}`;
+  const name =
+    r.kind === "partner"
+      ? (r.partner_name ?? r.first_name)
+      : `${r.first_name} ${r.last_name}`;
   tip.innerHTML = `
     <div style="font-weight:700;font-size:13px;margin-bottom:4px;">${escape(name)}</div>
     <div style="color:rgba(168,213,213,0.7);margin-bottom:2px;">${formatDateRange(r.arrival, r.departure)}</div>
     <div style="color:rgba(168,213,213,0.7);margin-bottom:2px;">${r.number_of_people} osoba${r.package_type ? " · " + escape(r.package_type) : ""}</div>
+    ${r.kind === "hold" && r.hold_contact ? `<div style="color:rgba(168,213,213,0.7);margin-bottom:2px;">Kontakt: ${escape(r.hold_contact)}</div>` : ""}
+    ${r.kind === "hold" && r.hold_until_date ? `<div style="color:rgba(255,216,154,0.9);margin-bottom:2px;">Uplata do: ${escape(r.hold_until_date)}</div>` : ""}
     <div style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:4px;background:${meta.bg};color:${meta.text};font-size:10px;font-weight:700;">${meta.label}</div>
     ${r.voucher_number ? `<div style="margin-top:6px;font-size:10px;color:rgba(168,213,213,0.4);font-family:monospace;">${escape(r.voucher_number)}</div>` : ""}
   `;
@@ -474,11 +604,15 @@ function hideTip() {
 }
 
 function escape(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  }[c] ?? c));
+  return s.replace(
+    /[&<>"']/g,
+    (c) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[c] ?? c,
+  );
 }

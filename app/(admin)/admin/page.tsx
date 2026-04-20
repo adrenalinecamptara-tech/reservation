@@ -19,6 +19,7 @@ export default async function AdminDashboard() {
     pipeline,
     money,
     partners,
+    holds,
     pendingList,
     todayLabel,
     referralStats,
@@ -266,6 +267,33 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
+      {/* ── HOLD ───────────────────────────────────────────────── */}
+      <div className="adm-section">
+        <h2 className="adm-section-title">Hold rezervacije</h2>
+        <div className="adm-stats">
+          <StatCard label="Ukupno hold" value={holds.total} color="#c7922f" />
+          <StatCard label="Aktivni hold" value={holds.active} color="#c7922f" />
+          <StatCard
+            label="Istekli hold"
+            value={holds.expired}
+            color="#d05b41"
+            accent={holds.expired > 0}
+          />
+          <a
+            href="/admin/holds?filter=expired"
+            className="adm-stat adm-stat-link"
+          >
+            <div
+              className="adm-stat-value"
+              style={{ color: "#d05b41", fontSize: 16 }}
+            >
+              Kontaktiraj →
+            </div>
+            <div className="adm-stat-label">Istekli hold</div>
+          </a>
+        </div>
+      </div>
+
       {/* ── PENDING LISTA ───────────────────────────────────────── */}
       {pendingList.length > 0 && (
         <div className="adm-section">
@@ -299,6 +327,10 @@ export default async function AdminDashboard() {
         <a href="/admin/reservations" className="adm-dash-link">
           <span>📋</span>
           <span>Sve rezervacije</span>
+        </a>
+        <a href="/admin/holds" className="adm-dash-link">
+          <span>⏳</span>
+          <span>Hold rezervacije</span>
         </a>
         <a href="/admin/calendar" className="adm-dash-link">
           <span>📅</span>
@@ -379,7 +411,7 @@ export default async function AdminDashboard() {
         .adm-card-plain { padding: 20px 24px; background: rgba(10,25,25,0.8); border: 1px solid rgba(62,140,140,0.15); border-radius: 12px; }
 
         /* Nav */
-        .adm-dash-links { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .adm-dash-links { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
         .adm-dash-link { display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: rgba(10,25,25,0.8); border: 1px solid rgba(62,140,140,0.15); border-radius: 12px; text-decoration: none; color: rgba(168,213,213,0.7); font-size: 14px; font-weight: 500; transition: all 0.2s; }
         .adm-dash-link:hover { border-color: rgba(62,140,140,0.35); color: #e8f5f5; }
         .adm-dash-link span:first-child { font-size: 20px; }
