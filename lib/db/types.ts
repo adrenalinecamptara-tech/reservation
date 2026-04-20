@@ -4,7 +4,12 @@
  *   npx supabase gen types typescript --project-id <id> > lib/db/types.ts
  */
 
-export type ReservationStatus = "pending" | "approved" | "cancelled" | "modified" | "paid";
+export type ReservationStatus =
+  | "pending"
+  | "approved"
+  | "cancelled"
+  | "modified"
+  | "paid";
 export type Floor = "ground" | "upper";
 
 export interface Package {
@@ -51,7 +56,7 @@ export interface Reservation {
   id_card_number: string;
   // Booking
   number_of_people: number;
-  arrival_date: string;         // ISO date string
+  arrival_date: string; // ISO date string
   departure_date: string | null;
   package_type: string | null;
   // Financial
@@ -78,13 +83,17 @@ export interface Reservation {
   voucher_sent_at: string | null;
   paid_at: string | null;
   paid_by: string | null;
-  voucher_number: string | null;   // ACT-YYYY-NNNN (sequential, admin reference)
-  verify_code: string | null;      // random 10-digit, used for QR + /verify URL
+  voucher_number: string | null; // ACT-YYYY-NNNN (sequential, admin reference)
+  verify_code: string | null; // random 10-digit, used for QR + /verify URL
   // Timestamps
   created_at: string;
   updated_at: string;
   // Relations (joined)
   cabin?: Cabin;
+  // New fields
+  date_of_birth?: string | null; // ISO date string
+  referral_source?: string | null;
+  referral_source_other?: string | null;
 }
 
 export interface ReservationInsert {
@@ -107,6 +116,10 @@ export interface ReservationInsert {
   package_id?: string | null;
   cabin_id?: string | null;
   floor?: Floor | null;
+  // New fields
+  date_of_birth?: string | null;
+  referral_source?: string | null;
+  referral_source_other?: string | null;
 }
 
 export interface ReservationUpdate {
@@ -136,6 +149,10 @@ export interface ReservationUpdate {
   voucher_sent_at?: string | null;
   paid_at?: string | null;
   paid_by?: string | null;
+  // New fields
+  date_of_birth?: string | null;
+  referral_source?: string | null;
+  referral_source_other?: string | null;
 }
 
 export interface ReservationUnit {

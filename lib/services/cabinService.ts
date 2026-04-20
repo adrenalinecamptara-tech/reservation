@@ -1,6 +1,14 @@
 import { createServiceClient } from "@/lib/db/supabase";
-import type { Cabin, ReservationUnit, ReservationUnitInput, Floor } from "@/lib/db/types";
-import { getAvailableUnits, deriveDeparture } from "@/lib/services/calendarService";
+import type {
+  Cabin,
+  ReservationUnit,
+  ReservationUnitInput,
+  Floor,
+} from "@/lib/db/types";
+import {
+  getAvailableUnits,
+  deriveDeparture,
+} from "@/lib/services/calendarService";
 
 export interface CabinAvailability {
   cabin: Cabin;
@@ -33,7 +41,7 @@ export async function listCabins(): Promise<Cabin[]> {
  * Used for calendar display and future OTA sync.
  */
 export async function getCabinAvailability(
-  date: string // ISO date string YYYY-MM-DD
+  date: string, // ISO date string YYYY-MM-DD
 ): Promise<CabinAvailability[]> {
   const supabase = createServiceClient();
 
@@ -47,13 +55,17 @@ export async function getCabinAvailability(
   ]);
 
   if (cabinsResult.error) throw new Error(cabinsResult.error.message);
-  if (reservationsResult.error) throw new Error(reservationsResult.error.message);
+  if (reservationsResult.error)
+    throw new Error(reservationsResult.error.message);
 
   const cabins = (cabinsResult.data ?? []) as Cabin[];
-  const reservations = (reservationsResult.data ?? []) as import("@/lib/db/types").Reservation[];
+  const reservations = (reservationsResult.data ??
+    []) as import("@/lib/db/types").Reservation[];
 
   return cabins.map((cabin) => {
-    const cabinReservations = reservations.filter((r) => r.cabin_id === cabin.id);
+    const cabinReservations = reservations.filter(
+      (r) => r.cabin_id === cabin.id,
+    );
     const groundUsed = cabinReservations
       .filter((r) => r.floor === "ground")
       .reduce((sum, r) => sum + r.number_of_people, 0);
@@ -67,8 +79,7 @@ export async function getCabinAvailability(
       upperBedsUsed: upperUsed,
       groundBedsAvailable: Math.max(0, cabin.ground_beds - groundUsed),
       upperBedsAvailable: Math.max(0, cabin.upper_beds - upperUsed),
-      isFull:
-        groundUsed >= cabin.ground_beds && upperUsed >= cabin.upper_beds,
+      isFull: groundUsed >= cabin.ground_beds && upperUsed >= cabin.upper_beds,
     };
   });
 }
@@ -79,13 +90,13 @@ export async function getCabinAvailability(
 export async function assignCabin(
   reservationId: string,
   cabinId: string,
-  floor: "ground" | "upper"
+  floor: "ground" | "upper",
 ): Promise<void> {
   const supabase = createServiceClient();
 
   const { error } = await supabase
     .from("reservations")
-    .update({ cabin_id: cabinId, floor, status: "modified" as const })
+    .update({ cabin_id: cabinId, floor })
     .eq("id", reservationId);
 
   if (error) throw new Error(`Failed to assign cabin: ${error.message}`);
@@ -94,14 +105,17 @@ export async function assignCabin(
 /**
  * List reservation units for a reservation (joined with cabin for display).
  */
-export async function listReservationUnits(reservationId: string): Promise<ReservationUnit[]> {
+export async function listReservationUnits(
+  reservationId: string,
+): Promise<ReservationUnit[]> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("reservation_units")
     .select("*, cabin:cabins(*)")
     .eq("reservation_id", reservationId)
     .order("created_at", { ascending: true });
-  if (error) throw new Error(`Failed to load reservation units: ${error.message}`);
+  if (error)
+    throw new Error(`Failed to load reservation units: ${error.message}`);
   return (data ?? []) as unknown as ReservationUnit[];
 }
 
@@ -112,7 +126,7 @@ export async function listReservationUnits(reservationId: string): Promise<Reser
  */
 export async function setReservationUnits(
   reservationId: string,
-  units: ReservationUnitInput[]
+  units: ReservationUnitInput[],
 ): Promise<void> {
   const supabase = createServiceClient();
 
@@ -144,10 +158,17 @@ export async function setReservationUnits(
     .select("arrival_date, departure_date, package_type, number_of_people")
     .eq("id", reservationId)
     .single();
-  if (resErr || !reservation) throw new Error(`Reservation not found: ${resErr?.message ?? reservationId}`);
+  if (resErr || !reservation)
+    throw new Error(
+      `Reservation not found: ${resErr?.message ?? reservationId}`,
+    );
 
   const arrival = reservation.arrival_date;
-  const departure = deriveDeparture(arrival, reservation.departure_date, reservation.package_type);
+  const departure = deriveDeparture(
+    arrival,
+    reservation.departure_date,
+    reservation.package_type,
+  );
 
   // Validate beds per unit
   const cabins = await listCabins();
@@ -158,23 +179,33 @@ export async function setReservationUnits(
     const cap = u.floor === "ground" ? cabin.ground_beds : cabin.upper_beds;
     if (u.people_count < 1) throw new Error("Broj ljudi u sobi mora biti ≥ 1.");
     if (u.people_count > cap) {
-      throw new Error(`${cabin.name} – ${u.floor === "ground" ? "Prizemlje" : "Sprat"}: max ${cap} mesta.`);
+      throw new Error(
+        `${cabin.name} – ${u.floor === "ground" ? "Prizemlje" : "Sprat"}: max ${cap} mesta.`,
+      );
     }
   }
 
   const totalPeople = units.reduce((s, u) => s + u.people_count, 0);
   if (totalPeople !== reservation.number_of_people) {
     throw new Error(
-      `Zbir ljudi po sobama (${totalPeople}) mora biti jednak broju osoba rezervacije (${reservation.number_of_people}).`
+      `Zbir ljudi po sobama (${totalPeople}) mora biti jednak broju osoba rezervacije (${reservation.number_of_people}).`,
     );
   }
 
   // Conflict check — available for this date range, excluding self
-  const availability = await getAvailableUnits(arrival, departure, reservationId);
+  const availability = await getAvailableUnits(
+    arrival,
+    departure,
+    reservationId,
+  );
   for (const u of units) {
-    const match = availability.find((a) => a.cabin_id === u.cabin_id && a.floor === u.floor);
+    const match = availability.find(
+      (a) => a.cabin_id === u.cabin_id && a.floor === u.floor,
+    );
     if (match && !match.available) {
-      const who = match.conflict ? ` (${match.conflict.first_name} ${match.conflict.last_name})` : "";
+      const who = match.conflict
+        ? ` (${match.conflict.first_name} ${match.conflict.last_name})`
+        : "";
       throw new Error(`Jedinica je već zauzeta${who}. Izaberi drugu.`);
     }
   }
@@ -192,14 +223,16 @@ export async function setReservationUnits(
     floor: u.floor as Floor,
     people_count: u.people_count,
   }));
-  const { error: insErr } = await supabase.from("reservation_units").insert(rows);
+  const { error: insErr } = await supabase
+    .from("reservation_units")
+    .insert(rows);
   if (insErr) throw new Error(`Failed to save units: ${insErr.message}`);
 
-  // Update legacy primary cabin_id/floor to first unit + mark modified
+  // Update legacy primary cabin_id/floor to first unit (status remains unchanged)
   const primary = units[0];
   await supabase
     .from("reservations")
-    .update({ cabin_id: primary.cabin_id, floor: primary.floor, status: "modified" as const })
+    .update({ cabin_id: primary.cabin_id, floor: primary.floor })
     .eq("id", reservationId);
 }
 
@@ -214,11 +247,11 @@ export async function getTotalAvailability(date: string): Promise<{
   const availability = await getCabinAvailability(date);
   const totalBeds = availability.reduce(
     (sum, a) => sum + a.cabin.ground_beds + a.cabin.upper_beds,
-    0
+    0,
   );
   const usedBeds = availability.reduce(
     (sum, a) => sum + a.groundBedsUsed + a.upperBedsUsed,
-    0
+    0,
   );
   return { totalBeds, usedBeds, availableBeds: totalBeds - usedBeds };
 }

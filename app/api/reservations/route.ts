@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/db/supabase";
-import { createReservation, listReservations } from "@/lib/services/reservationService";
+import {
+  createReservation,
+  listReservations,
+} from "@/lib/services/reservationService";
 import { validateToken } from "@/lib/services/linkService";
 import { registrationSchema } from "@/lib/validations/registrationSchema";
 
 /** GET /api/reservations — List reservations (admin only) */
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user)
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const reservations = await listReservations({
@@ -35,7 +41,7 @@ export async function POST(req: NextRequest) {
   if (!inviteLink) {
     return NextResponse.json(
       { error: "Link nije validan, istekao je ili je već iskorišćen" },
-      { status: 410 }
+      { status: 410 },
     );
   }
 
@@ -45,7 +51,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json(
       { error: "Nevažeći podaci", details: parsed.error.flatten() },
-      { status: 422 }
+      { status: 422 },
     );
   }
 
@@ -54,8 +60,11 @@ export async function POST(req: NextRequest) {
       ...parsed.data,
       invite_link_id: inviteLink.id,
       currency: "EUR",
+      date_of_birth: parsed.data.date_of_birth,
+      referral_source: parsed.data.referral_source,
+      referral_source_other: parsed.data.referral_source_other,
     },
-    token
+    token,
   );
 
   return NextResponse.json(reservation, { status: 201 });

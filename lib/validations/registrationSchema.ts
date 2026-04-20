@@ -3,13 +3,32 @@ import { z } from "zod";
 /**
  * Step 1 — Personal info
  */
-export const personalInfoSchema = z.object({
-  first_name: z.string().min(2, "Ime mora imati najmanje 2 karaktera"),
-  last_name: z.string().min(2, "Prezime mora imati najmanje 2 karaktera"),
-  email: z.string().email("Unesite ispravnu email adresu"),
-  phone: z.string().min(9, "Unesite ispravan broj telefona"),
-  id_card_number: z.string().min(6, "Unesite broj lične karte"),
-});
+export const personalInfoSchema = z
+  .object({
+    first_name: z.string().min(2, "Ime mora imati najmanje 2 karaktera"),
+    last_name: z.string().min(2, "Prezime mora imati najmanje 2 karaktera"),
+    email: z.string().email("Unesite ispravnu email adresu"),
+    phone: z.string().min(9, "Unesite ispravan broj telefona"),
+    id_card_number: z.string().min(6, "Unesite broj lične karte"),
+    date_of_birth: z.string().min(1, "Unesite datum rođenja"),
+    referral_source: z.string().min(1, "Odaberite kako ste čuli za nas"),
+    referral_source_other: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.referral_source === "Drugo") {
+        return (
+          !!data.referral_source_other &&
+          data.referral_source_other.trim().length > 2
+        );
+      }
+      return true;
+    },
+    {
+      message: "Molimo upišite kako ste čuli za nas",
+      path: ["referral_source_other"],
+    },
+  );
 
 /**
  * Step 2 — Group & booking details

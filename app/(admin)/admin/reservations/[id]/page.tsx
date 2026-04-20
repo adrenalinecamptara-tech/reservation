@@ -10,45 +10,64 @@ interface Props {
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  pending:   { label: "Na čekanju", color: "#e8a030" },
-  approved:  { label: "Odobreno",   color: "#4f9bbf" },
-  paid:      { label: "Naplaćeno",  color: "#16a34a" },
-  cancelled: { label: "Otkazano",   color: "#c44a5a" },
-  modified:  { label: "Izmenjeno",  color: "#5a70c0" },
+  pending: { label: "Na čekanju", color: "#e8a030" },
+  approved: { label: "Odobreno", color: "#4f9bbf" },
+  paid: { label: "Naplaćeno", color: "#16a34a" },
+  cancelled: { label: "Otkazano", color: "#c44a5a" },
+  modified: { label: "Izmenjeno", color: "#5a70c0" },
 };
 
 export default async function ReservationDetailPage({ params }: Props) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/admin/login");
 
   const { id } = await Promise.resolve(params);
 
-  let reservation, cabins, proofUrl: string | null = null;
+  let reservation,
+    cabins,
+    proofUrl: string | null = null;
   try {
-    [reservation, cabins] = await Promise.all([getReservation(id), listCabins()]);
+    [reservation, cabins] = await Promise.all([
+      getReservation(id),
+      listCabins(),
+    ]);
     if (reservation.payment_proof_path) {
-      proofUrl = await getSignedDownloadUrl(reservation.payment_proof_path).catch(() => null);
+      proofUrl = await getSignedDownloadUrl(
+        reservation.payment_proof_path,
+      ).catch(() => null);
     }
   } catch {
     notFound();
   }
 
-  const s = STATUS_LABELS[reservation.status] ?? { label: reservation.status, color: "#666" };
+  const s = STATUS_LABELS[reservation.status] ?? {
+    label: reservation.status,
+    color: "#666",
+  };
 
   return (
     <div className="adm-det">
       <div className="adm-det-top">
-        <a href="/admin/reservations" className="adm-back">← Sve rezervacije</a>
+        <a href="/admin/reservations" className="adm-back">
+          ← Sve rezervacije
+        </a>
         <div className="adm-det-title-row">
           <h1 className="adm-det-title">
             {reservation.first_name} {reservation.last_name}
           </h1>
-          <span className="adm-badge" style={{ color: s.color, borderColor: s.color }}>
+          <span
+            className="adm-badge"
+            style={{ color: s.color, borderColor: s.color }}
+          >
             {s.label}
           </span>
           {reservation.voucher_number && (
-            <span className="adm-voucher-chip">{reservation.voucher_number}</span>
+            <span className="adm-voucher-chip">
+              {reservation.voucher_number}
+            </span>
           )}
         </div>
       </div>
@@ -60,17 +79,45 @@ export default async function ReservationDetailPage({ params }: Props) {
             <h2 className="adm-card-title">Lični podaci</h2>
             <DataRow label="Email" value={reservation.email} />
             <DataRow label="Telefon" value={reservation.phone} />
-            <DataRow label="Broj lične karte" value={reservation.id_card_number} />
+            <DataRow
+              label="Broj lične karte"
+              value={reservation.id_card_number}
+            />
+            {reservation.date_of_birth && (
+              <DataRow
+                label="Datum rođenja"
+                value={reservation.date_of_birth}
+              />
+            )}
+            {reservation.referral_source && (
+              <DataRow
+                label="Kako je čuo/la za nas"
+                value={
+                  reservation.referral_source === "Drugo" &&
+                  reservation.referral_source_other
+                    ? `Drugo: ${reservation.referral_source_other}`
+                    : reservation.referral_source
+                }
+              />
+            )}
           </section>
 
           <section className="adm-card">
             <h2 className="adm-card-title">Rezervacija</h2>
             <DataRow label="Datum dolaska" value={reservation.arrival_date} />
-            <DataRow label="Broj osoba" value={String(reservation.number_of_people)} />
+            <DataRow
+              label="Broj osoba"
+              value={String(reservation.number_of_people)}
+            />
             {reservation.package_type && (
               <DataRow label="Paket" value={reservation.package_type} />
             )}
-            <DataRow label="Prijavljen" value={new Date(reservation.created_at).toLocaleDateString("sr-Latn-RS")} />
+            <DataRow
+              label="Prijavljen"
+              value={new Date(reservation.created_at).toLocaleDateString(
+                "sr-Latn-RS",
+              )}
+            />
           </section>
 
           <section className="adm-card">
@@ -87,7 +134,12 @@ export default async function ReservationDetailPage({ params }: Props) {
             )}
             {reservation.paid_at && (
               <>
-                <DataRow label="Plaćeno u kampu" value={new Date(reservation.paid_at).toLocaleString("sr-Latn-RS")} />
+                <DataRow
+                  label="Plaćeno u kampu"
+                  value={new Date(reservation.paid_at).toLocaleString(
+                    "sr-Latn-RS",
+                  )}
+                />
                 {reservation.paid_by && (
                   <DataRow label="Naplatio" value={reservation.paid_by} />
                 )}
@@ -95,7 +147,12 @@ export default async function ReservationDetailPage({ params }: Props) {
             )}
             {proofUrl && (
               <div className="adm-proof-link">
-                <a href={proofUrl} target="_blank" rel="noopener noreferrer" className="adm-link">
+                <a
+                  href={proofUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="adm-link"
+                >
                   📎 Pogledaj potvrdu o uplati
                 </a>
               </div>
@@ -105,17 +162,24 @@ export default async function ReservationDetailPage({ params }: Props) {
 
         {/* Right: Actions */}
         <div className="adm-det-col">
-          <ReservationActions
-            reservation={reservation}
-            cabins={cabins}
-          />
+          <ReservationActions reservation={reservation} cabins={cabins} />
 
           {reservation.approved_at && (
             <section className="adm-card">
               <h2 className="adm-card-title">Istorija</h2>
-              <DataRow label="Odobreno" value={new Date(reservation.approved_at).toLocaleString("sr-Latn-RS")} />
+              <DataRow
+                label="Odobreno"
+                value={new Date(reservation.approved_at).toLocaleString(
+                  "sr-Latn-RS",
+                )}
+              />
               {reservation.voucher_sent_at && (
-                <DataRow label="Vaučer poslat" value={new Date(reservation.voucher_sent_at).toLocaleString("sr-Latn-RS")} />
+                <DataRow
+                  label="Vaučer poslat"
+                  value={new Date(reservation.voucher_sent_at).toLocaleString(
+                    "sr-Latn-RS",
+                  )}
+                />
               )}
             </section>
           )}

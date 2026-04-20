@@ -1,5 +1,9 @@
 import { createServiceClient } from "@/lib/db/supabase";
-import type { Reservation, ReservationInsert, ReservationUpdate } from "@/lib/db/types";
+import type {
+  Reservation,
+  ReservationInsert,
+  ReservationUpdate,
+} from "@/lib/db/types";
 import { markTokenUsed } from "./linkService";
 import { notifyAdmin } from "./emailService";
 import { generateVoucher } from "./pdfService";
@@ -14,10 +18,11 @@ const CAMP_CAPACITY = 40;
  */
 export async function createReservation(
   data: ReservationInsert,
-  token: string
+  token: string,
 ): Promise<Reservation> {
   const supabase = createServiceClient();
 
+  // Pass through new fields (date_of_birth, referral_source, referral_source_other)
   const { data: reservation, error } = await supabase
     .from("reservations")
     .insert(data)
@@ -31,7 +36,7 @@ export async function createReservation(
 
   // Notify admin via email (non-blocking — don't fail the whole flow if email fails)
   notifyAdmin(reservation).catch((err) =>
-    console.error("Admin notification failed:", err)
+    console.error("Admin notification failed:", err),
   );
 
   return reservation;
@@ -80,7 +85,7 @@ export async function listReservations(filters?: {
   }
   if (filters?.search) {
     query = query.or(
-      `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`
+      `first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`,
     );
   }
 
@@ -94,7 +99,7 @@ export async function listReservations(filters?: {
  */
 export async function approveReservation(
   id: string,
-  approvedBy: string
+  approvedBy: string,
 ): Promise<Reservation> {
   const supabase = createServiceClient();
 
@@ -117,7 +122,9 @@ export async function approveReservation(
     .single();
 
   if (error || !reservation)
-    throw new Error(`Failed to approve reservation: ${error?.message ?? "not found"}`);
+    throw new Error(
+      `Failed to approve reservation: ${error?.message ?? "not found"}`,
+    );
 
   // Generate PDF voucher
   const pdfBuffer = await generateVoucher(reservation);
@@ -139,7 +146,7 @@ export async function approveReservation(
  */
 export async function updateReservation(
   id: string,
-  data: ReservationUpdate
+  data: ReservationUpdate,
 ): Promise<Reservation> {
   const supabase = createServiceClient();
 
@@ -175,7 +182,8 @@ export async function resendVoucher(id: string): Promise<Reservation> {
     .select("*, cabin:cabins(*)")
     .single();
 
-  if (error || !data) throw new Error(`Failed to mark resent: ${error?.message}`);
+  if (error || !data)
+    throw new Error(`Failed to mark resent: ${error?.message}`);
   return data;
 }
 
@@ -184,7 +192,7 @@ export async function resendVoucher(id: string): Promise<Reservation> {
  */
 export async function cancelReservation(
   id: string,
-  reason?: string
+  reason?: string,
 ): Promise<Reservation> {
   return updateReservation(id, {
     status: "cancelled",
@@ -196,7 +204,10 @@ export async function cancelReservation(
 /**
  * Confirm in-person payment by a worker scanning the voucher. Idempotent.
  */
-export async function confirmPayment(id: string, paidBy: string): Promise<Reservation> {
+export async function confirmPayment(
+  id: string,
+  paidBy: string,
+): Promise<Reservation> {
   const supabase = createServiceClient();
   const existing = await getReservation(id);
   if (existing.status === "cancelled") {
@@ -212,7 +223,8 @@ export async function confirmPayment(id: string, paidBy: string): Promise<Reserv
     .eq("id", id)
     .select("*, cabin:cabins(*)")
     .single();
-  if (error || !data) throw new Error(`Failed to confirm payment: ${error?.message}`);
+  if (error || !data)
+    throw new Error(`Failed to confirm payment: ${error?.message}`);
   return data;
 }
 
@@ -246,14 +258,19 @@ export async function getStats(): Promise<{
   return {
     total: active.length,
     pending: active.filter((r) => r.status === "pending").length,
-    approved: active.filter((r) => (r.status === "approved" || r.status === "modified") && !r.paid_at).length,
+    approved: active.filter(
+      (r) => (r.status === "approved" || r.status === "modified") && !r.paid_at,
+    ).length,
     cancelled: rows.filter((r) => r.status === "cancelled").length,
     paid: paidRows.length,
     totalPeople: active.reduce((sum, r) => sum + (r.number_of_people ?? 0), 0),
-    totalDeposits: active.reduce((sum, r) => sum + (Number(r.deposit_amount) ?? 0), 0),
+    totalDeposits: active.reduce(
+      (sum, r) => sum + (Number(r.deposit_amount) ?? 0),
+      0,
+    ),
     totalRevenue: paidRows.reduce(
       (sum, r) => sum + (Number(r.total_amount ?? r.deposit_amount) ?? 0),
-      0
+      0,
     ),
   };
 }
@@ -261,12 +278,39 @@ export async function getStats(): Promise<{
 export interface DashboardData {
   today: string;
   todayLabel: string;
-  arrivalsToday: Array<{ id: string; name: string; people: number; package: string | null; cabin: string | null }>;
-  departuresToday: Array<{ id: string; name: string; people: number; cabin: string | null }>;
+  arrivalsToday: Array<{
+    id: string;
+    name: string;
+    people: number;
+    package: string | null;
+    cabin: string | null;
+  }>;
+  departuresToday: Array<{
+    id: string;
+    name: string;
+    people: number;
+    cabin: string | null;
+  }>;
   inCampNow: { people: number; capacity: number; reservations: number };
-  weekOccupancy: Array<{ date: string; dayLabel: string; people: number; capacity: number }>;
-  pipeline: { pending: number; approvedUnpaid: number; paid: number; cancelled: number };
-  money: { totalDeposits: number; totalRevenue: number; outstandingRevenue: number; avgPerReservation: number; partnerRevenue: number };
+  weekOccupancy: Array<{
+    date: string;
+    dayLabel: string;
+    people: number;
+    capacity: number;
+  }>;
+  pipeline: {
+    pending: number;
+    approvedUnpaid: number;
+    paid: number;
+    cancelled: number;
+  };
+  money: {
+    totalDeposits: number;
+    totalRevenue: number;
+    outstandingRevenue: number;
+    avgPerReservation: number;
+    partnerRevenue: number;
+  };
   partners: { bookingsCount: number; peopleCount: number; revenue: number };
   pendingList: Reservation[];
 }
@@ -288,7 +332,10 @@ export async function getDashboardData(): Promise<DashboardData> {
   ]);
   const { data, error } = resResult;
   if (error) throw new Error(`Failed to load dashboard: ${error.message}`);
-  if (partnerResult.error) throw new Error(`Failed to load partner bookings: ${partnerResult.error.message}`);
+  if (partnerResult.error)
+    throw new Error(
+      `Failed to load partner bookings: ${partnerResult.error.message}`,
+    );
   const partnerRows = partnerResult.data ?? [];
 
   const all = (data ?? []) as Reservation[];
@@ -296,12 +343,19 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const today = new Date().toISOString().slice(0, 10);
   const todayLabel = new Date().toLocaleDateString("sr-Latn-RS", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
   });
 
   const withDeparture = active.map((r) => ({
     r,
-    departure: deriveDeparture(r.arrival_date, r.departure_date, r.package_type),
+    departure: deriveDeparture(
+      r.arrival_date,
+      r.departure_date,
+      r.package_type,
+    ),
   }));
 
   // Today
@@ -330,7 +384,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   // In camp now: arrival <= today < departure
   const inCampRows = withDeparture.filter(
-    ({ r, departure }) => r.arrival_date <= today && today < departure
+    ({ r, departure }) => r.arrival_date <= today && today < departure,
   );
   const inCampNow = {
     people: inCampRows.reduce((s, { r }) => s + (r.number_of_people ?? 0), 0),
@@ -343,11 +397,18 @@ export async function getDashboardData(): Promise<DashboardData> {
     const date = addDays(today, i);
     const next = addDays(date, 1);
     const people = withDeparture
-      .filter(({ r, departure }) => rangesOverlap(r.arrival_date, departure, date, next))
+      .filter(({ r, departure }) =>
+        rangesOverlap(r.arrival_date, departure, date, next),
+      )
       .reduce((s, { r }) => s + (r.number_of_people ?? 0), 0);
-    const dayLabel = new Date(date + "T00:00:00").toLocaleDateString("sr-Latn-RS", {
-      weekday: "short", day: "numeric", month: "numeric",
-    });
+    const dayLabel = new Date(date + "T00:00:00").toLocaleDateString(
+      "sr-Latn-RS",
+      {
+        weekday: "short",
+        day: "numeric",
+        month: "numeric",
+      },
+    );
     return { date, dayLabel, people, capacity: CAMP_CAPACITY };
   });
 
@@ -355,30 +416,40 @@ export async function getDashboardData(): Promise<DashboardData> {
   const pipeline = {
     pending: active.filter((r) => r.status === "pending").length,
     approvedUnpaid: active.filter(
-      (r) => (r.status === "approved" || r.status === "modified") && !r.paid_at
+      (r) => (r.status === "approved" || r.status === "modified") && !r.paid_at,
     ).length,
     paid: active.filter((r) => r.paid_at).length,
     cancelled: all.filter((r) => r.status === "cancelled").length,
   };
 
   // Money
-  const totalDeposits = active.reduce((s, r) => s + (Number(r.deposit_amount) || 0), 0);
+  const totalDeposits = active.reduce(
+    (s, r) => s + (Number(r.deposit_amount) || 0),
+    0,
+  );
   const paidRows = active.filter((r) => r.paid_at);
   const totalRevenue = paidRows.reduce(
     (s, r) => s + (Number(r.total_amount ?? r.deposit_amount) || 0),
-    0
+    0,
   );
   const outstandingRevenue = active
-    .filter((r) => (r.status === "approved" || r.status === "modified") && !r.paid_at)
+    .filter(
+      (r) => (r.status === "approved" || r.status === "modified") && !r.paid_at,
+    )
     .reduce((s, r) => s + (Number(r.remaining_amount) || 0), 0);
-  const avgPerReservation = paidRows.length > 0 ? totalRevenue / paidRows.length : 0;
+  const avgPerReservation =
+    paidRows.length > 0 ? totalRevenue / paidRows.length : 0;
 
   const pendingList = active.filter((r) => r.status === "pending").slice(0, 10);
 
-  const partnerPeople = partnerRows.reduce((s, r) => s + (Number(r.number_of_people) || 0), 0);
+  const partnerPeople = partnerRows.reduce(
+    (s, r) => s + (Number(r.number_of_people) || 0),
+    0,
+  );
   const partnerRevenue = partnerRows.reduce(
-    (s, r) => s + (Number(r.price_per_person) || 0) * (Number(r.number_of_people) || 0),
-    0
+    (s, r) =>
+      s + (Number(r.price_per_person) || 0) * (Number(r.number_of_people) || 0),
+    0,
   );
 
   return {
@@ -389,8 +460,18 @@ export async function getDashboardData(): Promise<DashboardData> {
     inCampNow,
     weekOccupancy,
     pipeline,
-    money: { totalDeposits, totalRevenue, outstandingRevenue, avgPerReservation, partnerRevenue },
-    partners: { bookingsCount: partnerRows.length, peopleCount: partnerPeople, revenue: partnerRevenue },
+    money: {
+      totalDeposits,
+      totalRevenue,
+      outstandingRevenue,
+      avgPerReservation,
+      partnerRevenue,
+    },
+    partners: {
+      bookingsCount: partnerRows.length,
+      peopleCount: partnerPeople,
+      revenue: partnerRevenue,
+    },
     pendingList,
   };
 }
@@ -415,10 +496,7 @@ export async function deleteReservation(id: string): Promise<void> {
       .remove([reservation.payment_proof_path]);
   }
 
-  const { error } = await supabase
-    .from("reservations")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("reservations").delete().eq("id", id);
 
   if (error) throw new Error(`Failed to delete reservation: ${error.message}`);
 }

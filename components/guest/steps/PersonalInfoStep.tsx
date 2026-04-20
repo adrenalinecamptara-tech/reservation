@@ -2,7 +2,10 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { personalInfoSchema, type PersonalInfoValues } from "@/lib/validations/registrationSchema";
+import {
+  personalInfoSchema,
+  type PersonalInfoValues,
+} from "@/lib/validations/registrationSchema";
 import { useRegistrationStore } from "@/lib/store/registrationStore";
 
 export function PersonalInfoStep() {
@@ -11,11 +14,14 @@ export function PersonalInfoStep() {
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<PersonalInfoValues>({
     resolver: zodResolver(personalInfoSchema),
     defaultValues: personalInfo as PersonalInfoValues,
   });
+
+  const referralSource = watch("referral_source");
 
   const onSubmit = (data: PersonalInfoValues) => {
     setPersonalInfo(data);
@@ -31,7 +37,9 @@ export function PersonalInfoStep() {
 
       <div className="act-row-2">
         <div className="act-field">
-          <label className="act-label" htmlFor="first_name">Ime</label>
+          <label className="act-label" htmlFor="first_name">
+            Ime
+          </label>
           <input
             id="first_name"
             className={`act-input ${errors.first_name ? "act-input--error" : ""}`}
@@ -44,7 +52,9 @@ export function PersonalInfoStep() {
           )}
         </div>
         <div className="act-field">
-          <label className="act-label" htmlFor="last_name">Prezime</label>
+          <label className="act-label" htmlFor="last_name">
+            Prezime
+          </label>
           <input
             id="last_name"
             className={`act-input ${errors.last_name ? "act-input--error" : ""}`}
@@ -59,7 +69,9 @@ export function PersonalInfoStep() {
       </div>
 
       <div className="act-field">
-        <label className="act-label" htmlFor="email">Email adresa</label>
+        <label className="act-label" htmlFor="email">
+          Email adresa
+        </label>
         <input
           id="email"
           type="email"
@@ -68,13 +80,13 @@ export function PersonalInfoStep() {
           autoComplete="email"
           {...register("email")}
         />
-        {errors.email && (
-          <p className="act-error">{errors.email.message}</p>
-        )}
+        {errors.email && <p className="act-error">{errors.email.message}</p>}
       </div>
 
       <div className="act-field">
-        <label className="act-label" htmlFor="phone">Broj telefona</label>
+        <label className="act-label" htmlFor="phone">
+          Broj telefona
+        </label>
         <input
           id="phone"
           type="tel"
@@ -83,9 +95,7 @@ export function PersonalInfoStep() {
           autoComplete="tel"
           {...register("phone")}
         />
-        {errors.phone && (
-          <p className="act-error">{errors.phone.message}</p>
-        )}
+        {errors.phone && <p className="act-error">{errors.phone.message}</p>}
       </div>
 
       <div className="act-field">
@@ -102,6 +112,67 @@ export function PersonalInfoStep() {
           <p className="act-error">{errors.id_card_number.message}</p>
         )}
       </div>
+
+      <div className="act-field">
+        <label className="act-label" htmlFor="date_of_birth">
+          Datum rođenja
+        </label>
+        <input
+          id="date_of_birth"
+          type="date"
+          className={`act-input ${errors.date_of_birth ? "act-input--error" : ""}`}
+          {...register("date_of_birth")}
+        />
+        {errors.date_of_birth && (
+          <p className="act-error">{errors.date_of_birth.message}</p>
+        )}
+      </div>
+
+      <div className="act-field">
+        <label className="act-label" htmlFor="referral_source">
+          Kako si čuo/la za nas?
+        </label>
+        <select
+          id="referral_source"
+          className={`act-input ${errors.referral_source ? "act-input--error" : ""}`}
+          {...register("referral_source")}
+        >
+          <option value="">Odaberi opciju</option>
+          <option value="Instagram">Instagram</option>
+          <option value="YouTube">YouTube</option>
+          <option value="TikTok">TikTok</option>
+          <option value="Facebook">Facebook</option>
+          <option value="Google pretraga">Google pretraga</option>
+          <option value="Naš sajt">Naš sajt</option>
+          <option value="Booking.com / Airbnb">Booking.com / Airbnb</option>
+          <option value="Preporuka prijatelja">Preporuka prijatelja</option>
+          <option value="AI pretraga (ChatGPT, Gemini...)">
+            AI pretraga (ChatGPT, Gemini...)
+          </option>
+          <option value="Ponovo dolazim">Ponovo dolazim</option>
+          <option value="Drugo">Drugo</option>
+        </select>
+        {errors.referral_source && (
+          <p className="act-error">{errors.referral_source.message}</p>
+        )}
+      </div>
+
+      {referralSource === "Drugo" && (
+        <div className="act-field">
+          <label className="act-label" htmlFor="referral_source_other">
+            Kako?
+          </label>
+          <input
+            id="referral_source_other"
+            className={`act-input ${errors.referral_source_other ? "act-input--error" : ""}`}
+            placeholder="Napiši kako si čuo/la za nas"
+            {...register("referral_source_other")}
+          />
+          {errors.referral_source_other && (
+            <p className="act-error">{errors.referral_source_other.message}</p>
+          )}
+        </div>
+      )}
 
       <div className="act-btn-row">
         <button type="submit" className="act-btn act-btn--primary">

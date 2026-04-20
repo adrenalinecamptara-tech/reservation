@@ -11,7 +11,13 @@ export type RegistrationStep = 1 | 2 | 3;
 interface RegistrationState {
   step: RegistrationStep;
   token: string;
-  personalInfo: Partial<PersonalInfoValues>;
+  personalInfo: Partial<
+    PersonalInfoValues & {
+      date_of_birth?: string;
+      referral_source?: string;
+      referral_source_other?: string;
+    }
+  >;
   groupDetails: Partial<GroupDetailsValues>;
   payment: Partial<PaymentValues>;
 
@@ -52,7 +58,9 @@ export const useRegistrationStore = create<RegistrationState>()(
       setPersonalInfo: (data) => set({ personalInfo: data }),
       setGroupDetails: (data) => set({ groupDetails: data }),
       setCalculatedTotal: (total) =>
-        set((s) => ({ payment: { ...s.payment, total_amount: total ?? undefined } })),
+        set((s) => ({
+          payment: { ...s.payment, total_amount: total ?? undefined },
+        })),
       setPayment: (data) =>
         set((s) => ({ payment: { ...s.payment, ...data } })),
       reset: () => set(initialState),
@@ -66,6 +74,6 @@ export const useRegistrationStore = create<RegistrationState>()(
         groupDetails: s.groupDetails,
         payment: s.payment,
       }),
-    }
-  )
+    },
+  ),
 );
