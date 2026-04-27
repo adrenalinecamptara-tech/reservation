@@ -1,32 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { getReferralSourceColor } from "@/lib/constants/referralSources";
 
 interface Segment {
   source: string;
   count: number;
   percent: number;
-}
-
-// Fixed colors per source — fallback for unknown sources
-const SOURCE_COLORS: Record<string, string> = {
-  Instagram: "#e1306c",
-  YouTube: "#e8503a",
-  TikTok: "#a78bfa",
-  Facebook: "#3b82f6",
-  "Google pretraga": "#16a34a",
-  "Naš sajt": "#38bdf8",
-  "Booking.com / Airbnb": "#0ea5e9",
-  "Preporuka prijatelja": "#f472b6",
-  "AI pretraga (ChatGPT, Gemini...)": "#94a3b8",
-  "Ponovo dolazim": "#3aaa70",
-  Nepoznato: "#4a5568",
-  Drugo: "#e8a030",
-};
-const FALLBACK_COLORS = ["#4f9bbf", "#9b6bd9", "#c44a5a", "#3a9090", "#d4a017"];
-
-function getColor(source: string, idx: number): string {
-  return SOURCE_COLORS[source] ?? FALLBACK_COLORS[idx % FALLBACK_COLORS.length];
 }
 
 function polarToCartesian(cx: number, cy: number, r: number, angleDeg: number) {
@@ -73,7 +53,7 @@ export function ReferralWheel({ stats }: { stats: Segment[] }) {
     const start = angle + GAP / 2;
     const end = angle + sweep - GAP / 2;
     angle += sweep;
-    return { ...s, start, end, color: getColor(s.source, i) };
+    return { ...s, start, end, color: getReferralSourceColor(s.source, i) };
   });
 
   const active = activeIdx !== null ? segments[activeIdx] : null;

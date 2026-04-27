@@ -1,9 +1,14 @@
 import { createClient } from "@/lib/db/supabase";
 import { redirect } from "next/navigation";
-import { listPartners, listPartnerBookings } from "@/lib/services/partnerService";
+import {
+  listPartners,
+  listPartnerBookings,
+  partnerBookingTotal,
+} from "@/lib/services/partnerService";
 import { listCabins } from "@/lib/services/cabinService";
 import { PartnerBookingForm } from "@/components/admin/partners/PartnerBookingForm";
 import { PartnerBookingList } from "@/components/admin/partners/PartnerBookingList";
+import { PartnersManager } from "@/components/admin/partners/PartnersManager";
 
 export default async function AdminPartnersPage() {
   const supabase = await createClient();
@@ -16,10 +21,7 @@ export default async function AdminPartnersPage() {
     listCabins(),
   ]);
 
-  const totalEarned = bookings.reduce(
-    (s, b) => s + Number(b.price_per_person) * b.number_of_people,
-    0
-  );
+  const totalEarned = bookings.reduce((s, b) => s + partnerBookingTotal(b), 0);
 
   return (
     <div className="adp">
@@ -43,6 +45,11 @@ export default async function AdminPartnersPage() {
           <div className="adp-stat-label">Partnera</div>
         </div>
       </div>
+
+      <section className="adp-section">
+        <h2 className="adp-section-title">Partneri ({partners.length})</h2>
+        <PartnersManager partners={partners} />
+      </section>
 
       <section className="adp-section">
         <h2 className="adp-section-title">Nova rezervacija</h2>

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/db/supabase";
 import { getAvailableUnits } from "@/lib/services/calendarService";
 
-/** GET /api/availability?arrival=YYYY-MM-DD&departure=YYYY-MM-DD&exclude=<id> */
+/** GET /api/availability?arrival=YYYY-MM-DD&departure=YYYY-MM-DD&exclude=<id>&excludeHold=<id> */
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -12,11 +12,12 @@ export async function GET(req: NextRequest) {
   const arrival = searchParams.get("arrival");
   const departure = searchParams.get("departure");
   const exclude = searchParams.get("exclude") ?? undefined;
+  const excludeHold = searchParams.get("excludeHold") ?? undefined;
 
   if (!arrival || !departure) {
     return NextResponse.json({ error: "arrival and departure are required" }, { status: 400 });
   }
 
-  const units = await getAvailableUnits(arrival, departure, exclude);
+  const units = await getAvailableUnits(arrival, departure, exclude, excludeHold);
   return NextResponse.json(units);
 }

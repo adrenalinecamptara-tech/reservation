@@ -1,16 +1,12 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { Partner, Cabin, Floor } from "@/lib/db/types";
-
-interface AvailabilityUnit {
-  cabin_id: string;
-  cabin_name: string;
-  floor: Floor;
-  available: boolean;
-  conflict?: { first_name: string; last_name: string };
-}
+import {
+  cabinStatusSuffix,
+  useUnitAvailability,
+} from "@/lib/hooks/useUnitAvailability";
 
 function addDaysISO(iso: string, n: number): string {
   const d = new Date(iso + "T00:00:00Z");
@@ -42,40 +38,21 @@ export function PartnerBookingForm({ partners, cabins }: Props) {
   const [newPartnerName, setNewPartnerName] = useState("");
   const [newPartnerPrice, setNewPartnerPrice] = useState(25);
 
-  const total = useMemo(() => pricePerPerson * numberOfPeople, [pricePerPerson, numberOfPeople]);
+  const total = useMemo(
+    () => pricePerPerson * numberOfPeople * nights,
+    [pricePerPerson, numberOfPeople, nights],
+  );
 
-  const [availability, setAvailability] = useState<AvailabilityUnit[]>([]);
-  const [checkingAvail, setCheckingAvail] = useState(false);
-
-  useEffect(() => {
-    if (!arrivalDate || nights < 1) {
-      setAvailability([]);
-      return;
-    }
-    const departure = addDaysISO(arrivalDate, nights);
-    const ctrl = new AbortController();
-    setCheckingAvail(true);
-    fetch(`/api/availability?arrival=${arrivalDate}&departure=${departure}`, { signal: ctrl.signal })
-      .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data)) setAvailability(data);
-      })
-      .catch(() => {})
-      .finally(() => setCheckingAvail(false));
-    return () => ctrl.abort();
-  }, [arrivalDate, nights]);
-
-  const cabinAvail = useMemo(() => {
-    const map: Record<string, { ground?: AvailabilityUnit; upper?: AvailabilityUnit }> = {};
-    for (const u of availability) {
-      map[u.cabin_id] = map[u.cabin_id] ?? {};
-      map[u.cabin_id][u.floor] = u;
-    }
-    return map;
-  }, [availability]);
+  const departure = arrivalDate && nights >= 1 ? addDaysISO(arrivalDate, nights) : "";
+  const {
+    cabinAvail,
+    checking: checkingAvail,
+    loaded: availabilityLoaded,
+  } = useUnitAvailability({ arrival: arrivalDate, departure });
 
   const selectedUnit = cabinAvail[cabinId]?.[floor];
-  const selectedBlocked = availability.length > 0 && selectedUnit && !selectedUnit.available;
+  const selectedBlocked =
+    availabilityLoaded && selectedUnit && !selectedUnit.available;
   const conflictLabel = selectedUnit?.conflict
     ? `${selectedUnit.conflict.first_name} ${selectedUnit.conflict.last_name}`.trim()
     : null;
@@ -218,28 +195,31 @@ export function PartnerBookingForm({ partners, cabins }: Props) {
             />
           </label>
           <label className="pbf-label">
-            <span>Broj noći</span>
+            <span>Datum odlaska</span>
             <input
-              type="number"
-              min={1}
-              value={nights}
-              onChange={(e) => setNights(Number(e.target.value))}
+              type="date"
+              value={departure}
+              min={arrivalDate ? addDaysISO(arrivalDate, 1) : undefined}
+              onChange={(e) => {
+                if (!arrivalDate || !e.target.value) return;
+                const a = new Date(arrivalDate + "T00:00:00Z").getTime();
+                const d = new Date(e.target.value + "T00:00:00Z").getTime();
+                const diff = Math.round((d - a) / 86400000);
+                if (diff >= 1) setNights(diff);
+              }}
               className="pbf-input"
+              disabled={!arrivalDate}
             />
           </label>
           <label className="pbf-label">
             <span>Bungalov</span>
             <select value={cabinId} onChange={(e) => setCabinId(e.target.value)} className="pbf-input">
               {cabins.map((c) => {
-                const a = cabinAvail[c.id];
-                const bothBusy = availability.length > 0 && a && !a.ground?.available && !a.upper?.available;
-                const suffix = availability.length === 0
-                  ? ""
-                  : bothBusy
-                    ? " — zauzeto"
-                    : a && (!a.ground?.available || !a.upper?.available)
-                      ? " — delimično"
-                      : " — slobodno";
+                const { suffix, bothBusy } = cabinStatusSuffix(
+                  c.id,
+                  cabinAvail,
+                  availabilityLoaded,
+                );
                 return (
                   <option key={c.id} value={c.id} disabled={bothBusy}>
                     {c.name}{suffix}
@@ -257,13 +237,13 @@ export function PartnerBookingForm({ partners, cabins }: Props) {
             >
               <option
                 value="ground"
-                disabled={availability.length > 0 && cabinAvail[cabinId]?.ground?.available === false}
+                disabled={availabilityLoaded && cabinAvail[cabinId]?.ground?.available === false}
               >
                 Prizemlje{cabinAvail[cabinId]?.ground && !cabinAvail[cabinId].ground!.available ? " — zauzeto" : ""}
               </option>
               <option
                 value="upper"
-                disabled={availability.length > 0 && cabinAvail[cabinId]?.upper?.available === false}
+                disabled={availabilityLoaded && cabinAvail[cabinId]?.upper?.available === false}
               >
                 Sprat{cabinAvail[cabinId]?.upper && !cabinAvail[cabinId].upper!.available ? " — zauzeto" : ""}
               </option>
@@ -303,7 +283,7 @@ export function PartnerBookingForm({ partners, cabins }: Props) {
         </label>
 
         <div className="pbf-total">
-          Ukupno: <strong>{total.toFixed(0)} €</strong> ({numberOfPeople} × {pricePerPerson} €)
+          Ukupno: <strong>{total.toFixed(0)} €</strong> ({numberOfPeople} × {pricePerPerson} € × {nights} {nights === 1 ? "noć" : "noći"})
         </div>
 
         {arrivalDate && (

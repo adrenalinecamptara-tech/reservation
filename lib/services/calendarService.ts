@@ -155,15 +155,7 @@ interface PartnerBookingRow {
   partner?: { name: string } | null;
 }
 
-interface ReservationHoldWithUnits extends ReservationHold {
-  reservation_hold_units?: Array<{
-    cabin_id: string;
-    floor: Floor;
-    people_count: number;
-  }>;
-}
-
-function holdToOccupied(h: ReservationHoldWithUnits): OccupiedReservation[] {
+function holdToOccupied(h: ReservationHold): OccupiedReservation[] {
   const today = new Date().toISOString().slice(0, 10);
   const effectiveStatus: HoldStatus =
     h.status === "active" && h.hold_until_date < today ? "expired" : h.status;
@@ -269,7 +261,7 @@ export async function getMonthReservations(
     .map(partnerToOccupied)
     .filter((r) => rangesOverlap(r.arrival, r.departure, start, endExclusive));
 
-  const holds = (holdsResult.data ?? []) as ReservationHoldWithUnits[];
+  const holds = (holdsResult.data ?? []) as ReservationHold[];
   const holdOccupied = holds
     .flatMap(holdToOccupied)
     .filter((r) => rangesOverlap(r.arrival, r.departure, start, endExclusive));
@@ -326,7 +318,7 @@ export async function getAvailableUnits(
     .map(partnerToOccupied)
     .filter((r) => rangesOverlap(r.arrival, r.departure, arrival, departure));
 
-  const holdRows = (holdsResult.data ?? []) as ReservationHoldWithUnits[];
+  const holdRows = (holdsResult.data ?? []) as ReservationHold[];
   const holdOccupied = holdRows
     .filter((h) => !excludeHoldId || h.id !== excludeHoldId)
     .flatMap(holdToOccupied)

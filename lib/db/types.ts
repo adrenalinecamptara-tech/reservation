@@ -228,6 +228,7 @@ export interface ReservationHold {
   created_at: string;
   updated_at: string;
   cabin?: Cabin;
+  reservation_hold_units?: ReservationHoldUnit[];
 }
 
 export interface ReservationHoldInsert {

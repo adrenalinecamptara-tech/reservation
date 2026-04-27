@@ -3,14 +3,12 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { HoldStatus, ReservationHold } from "@/lib/db/types";
+import { getEffectiveHoldStatus } from "@/lib/utils/holdStatus";
 
 type Filter = "all" | "active" | "expired" | "converted" | "cancelled";
 
-function effectiveStatus(h: ReservationHold): HoldStatus {
-  const today = new Date().toISOString().slice(0, 10);
-  if (h.status === "active" && h.hold_until_date < today) return "expired";
-  return h.status;
-}
+const effectiveStatus = (h: ReservationHold): HoldStatus =>
+  getEffectiveHoldStatus(h);
 
 function fmt(iso: string): string {
   const d = new Date(iso + "T00:00:00Z");
@@ -82,7 +80,7 @@ export function HoldBookingList({
             ["all", "Svi"],
             ["active", "Aktivni"],
             ["expired", "Istekli"],
-            ["converted", "Converted"],
+            ["converted", "Pretvoreni"],
             ["cancelled", "Otkazani"],
           ] as Array<[Filter, string]>
         ).map(([key, label]) => (
@@ -109,7 +107,7 @@ export function HoldBookingList({
               : st === "expired"
                 ? "Hold istekao"
                 : st === "converted"
-                  ? "Converted"
+                  ? "Pretvoreno"
                   : "Otkazan";
           const statusClass = `hbl-status hbl-status--${st}`;
           return (
@@ -126,10 +124,28 @@ export function HoldBookingList({
                   <span>
                     📅 {fmt(h.arrival_date)} → {fmt(h.departure_date)}
                   </span>
-                  <span>
-                    🏠 {h.cabin?.name ?? "-"} ·{" "}
-                    {h.floor === "ground" ? "Prizemlje" : "Sprat"}
-                  </span>
+                  {(() => {
+                    const units = h.reservation_hold_units ?? [];
+                    if (units.length > 0) {
+                      return (
+                        <span>
+                          🏠{" "}
+                          {units
+                            .map(
+                              (u) =>
+                                `${u.cabin?.name ?? "-"} · ${u.floor === "ground" ? "Prizemlje" : "Sprat"} (${u.people_count})`,
+                            )
+                            .join(" + ")}
+                        </span>
+                      );
+                    }
+                    return (
+                      <span>
+                        🏠 {h.cabin?.name ?? "-"} ·{" "}
+                        {h.floor === "ground" ? "Prizemlje" : "Sprat"}
+                      </span>
+                    );
+                  })()}
                   <span>👥 {h.number_of_people}</span>
                   <span>⏰ Uplata do: {fmt(h.hold_until_date)}</span>
                 </div>
@@ -143,7 +159,7 @@ export function HoldBookingList({
                     className="hbl-btn hbl-btn--ok"
                     onClick={() => setStatus(h.id, "converted")}
                   >
-                    Converted
+                    Pretvoreno
                   </button>
                 )}
                 {(st === "active" || st === "expired") && (
@@ -152,7 +168,7 @@ export function HoldBookingList({
                     className="hbl-btn hbl-btn--muted"
                     onClick={() => setStatus(h.id, "cancelled")}
                   >
-                    Otkazi
+                    Otkaži
                   </button>
                 )}
                 {st === "cancelled" && (

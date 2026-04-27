@@ -48,7 +48,7 @@ export function PartnerBookingList({ bookings }: Props) {
     <div className="pbl">
       {bookings.map((b) => {
         const departure = addDaysIso(b.arrival_date, b.nights);
-        const total = Number(b.price_per_person) * b.number_of_people;
+        const total = Number(b.price_per_person) * b.number_of_people * b.nights;
         return (
           <div key={b.id} className="pbl-row">
             <div className="pbl-main">
@@ -60,7 +60,7 @@ export function PartnerBookingList({ bookings }: Props) {
                 <span>📅 {fmt(b.arrival_date)} → {fmt(departure)} ({b.nights} {b.nights === 1 ? "noć" : "noći"})</span>
                 <span>🏠 {b.cabin?.name ?? "—"} · {b.floor === "ground" ? "Prizemlje" : "Sprat"}</span>
                 <span>👥 {b.number_of_people} osoba</span>
-                <span>💶 {Number(b.price_per_person)} €/os · <strong>{total} €</strong></span>
+                <span>💶 {Number(b.price_per_person)} €/os/noć · <strong>{total} €</strong></span>
               </div>
               {b.notes && <div className="pbl-notes">{b.notes}</div>}
             </div>

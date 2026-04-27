@@ -28,6 +28,46 @@ export async function createPartner(input: {
   return data as Partner;
 }
 
+export async function updatePartner(
+  id: string,
+  input: {
+    name?: string;
+    default_price_per_person?: number;
+    notes?: string | null;
+  },
+): Promise<Partner> {
+  const supabase = createServiceClient();
+  const patch: Record<string, unknown> = {};
+  if (input.name !== undefined) patch.name = input.name;
+  if (input.default_price_per_person !== undefined)
+    patch.default_price_per_person = input.default_price_per_person;
+  if (input.notes !== undefined) patch.notes = input.notes;
+  const { data, error } = await supabase
+    .from("partners")
+    .update(patch)
+    .eq("id", id)
+    .select()
+    .single();
+  if (error || !data) throw new Error(`Failed to update partner: ${error?.message}`);
+  return data as Partner;
+}
+
+export async function deletePartner(id: string): Promise<void> {
+  const supabase = createServiceClient();
+  const { count, error: countErr } = await supabase
+    .from("partner_bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("partner_id", id);
+  if (countErr) throw new Error(countErr.message);
+  if ((count ?? 0) > 0) {
+    throw new Error(
+      "Partner ima rezervacije — prvo obriši ili premesti rezervacije.",
+    );
+  }
+  const { error } = await supabase.from("partners").delete().eq("id", id);
+  if (error) throw new Error(`Failed to delete partner: ${error.message}`);
+}
+
 export async function listPartnerBookings(): Promise<PartnerBooking[]> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
@@ -129,5 +169,5 @@ export function partnerBookingDeparture(b: PartnerBooking): string {
 }
 
 export function partnerBookingTotal(b: PartnerBooking): number {
-  return Number(b.price_per_person) * b.number_of_people;
+  return Number(b.price_per_person) * b.number_of_people * b.nights;
 }

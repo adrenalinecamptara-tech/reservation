@@ -9,6 +9,7 @@ import { notifyAdmin } from "./emailService";
 import { generateVoucher } from "./pdfService";
 import { sendVoucherToGuest, sendUpdatedVoucherToGuest } from "./emailService";
 import { addDays, deriveDeparture, rangesOverlap } from "./calendarService";
+import { UNKNOWN_REFERRAL_SOURCE } from "@/lib/constants/referralSources";
 
 const CAMP_CAPACITY = 40;
 
@@ -336,7 +337,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       .order("created_at", { ascending: false }),
     supabase
       .from("partner_bookings")
-      .select("number_of_people, price_per_person"),
+      .select("number_of_people, price_per_person, nights"),
     supabase.from("reservation_holds").select("status, hold_until_date"),
   ]);
   const { data, error } = resResult;
@@ -459,8 +460,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   // Referral source stats — aggregate active reservations by source
   const referralMap = new Map<string, number>();
   for (const r of active) {
-    const src = (r as any).referral_source as string | null | undefined;
-    const source = src ?? "Nepoznato";
+    const source = r.referral_source ?? UNKNOWN_REFERRAL_SOURCE;
     referralMap.set(source, (referralMap.get(source) ?? 0) + 1);
   }
   const referralTotal = active.length;
@@ -480,7 +480,10 @@ export async function getDashboardData(): Promise<DashboardData> {
   );
   const partnerRevenue = partnerRows.reduce(
     (s, r) =>
-      s + (Number(r.price_per_person) || 0) * (Number(r.number_of_people) || 0),
+      s +
+      (Number(r.price_per_person) || 0) *
+        (Number(r.number_of_people) || 0) *
+        (Number(r.nights) || 0),
     0,
   );
 

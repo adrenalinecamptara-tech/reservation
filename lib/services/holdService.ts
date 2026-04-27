@@ -18,14 +18,8 @@ type HoldCreateInput = ReservationHoldInsert & {
   units?: ReservationHoldUnitInput[];
 };
 
-export function getEffectiveHoldStatus(
-  row: Pick<ReservationHold, "status" | "hold_until_date">,
-  todayIso = new Date().toISOString().slice(0, 10),
-): HoldStatus {
-  if (row.status === "active" && row.hold_until_date < todayIso)
-    return "expired";
-  return row.status;
-}
+export { getEffectiveHoldStatus } from "@/lib/utils/holdStatus";
+import { getEffectiveHoldStatus } from "@/lib/utils/holdStatus";
 
 function assertHoldDates(input: {
   arrival_date: string;
@@ -134,7 +128,9 @@ export async function listReservationHolds(): Promise<ReservationHold[]> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("reservation_holds")
-    .select("*, cabin:cabins(*)")
+    .select(
+      "*, cabin:cabins(*), reservation_hold_units(*, cabin:cabins(*))",
+    )
     .order("created_at", { ascending: false });
 
   if (error)
@@ -196,8 +192,11 @@ export async function createReservationHold(
   const { error: unitsErr } = await supabase
     .from("reservation_hold_units")
     .insert(rows);
-  if (unitsErr)
+  if (unitsErr) {
+    // Rollback: ukloni upravo kreirani hold da ne ostane siroce bez jedinica.
+    await supabase.from("reservation_holds").delete().eq("id", data.id);
     throw new Error(`Failed to save hold units: ${unitsErr.message}`);
+  }
 
   return data as ReservationHold;
 }

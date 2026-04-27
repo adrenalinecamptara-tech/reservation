@@ -7,6 +7,7 @@ import {
   type PersonalInfoValues,
 } from "@/lib/validations/registrationSchema";
 import { useRegistrationStore } from "@/lib/store/registrationStore";
+import { REFERRAL_SOURCES } from "@/lib/constants/referralSources";
 
 export function PersonalInfoStep() {
   const { personalInfo, setPersonalInfo, nextStep } = useRegistrationStore();
@@ -138,19 +139,11 @@ export function PersonalInfoStep() {
           {...register("referral_source")}
         >
           <option value="">Odaberi opciju</option>
-          <option value="Instagram">Instagram</option>
-          <option value="YouTube">YouTube</option>
-          <option value="TikTok">TikTok</option>
-          <option value="Facebook">Facebook</option>
-          <option value="Google pretraga">Google pretraga</option>
-          <option value="Naš sajt">Naš sajt</option>
-          <option value="Booking.com / Airbnb">Booking.com / Airbnb</option>
-          <option value="Preporuka prijatelja">Preporuka prijatelja</option>
-          <option value="AI pretraga (ChatGPT, Gemini...)">
-            AI pretraga (ChatGPT, Gemini...)
-          </option>
-          <option value="Ponovo dolazim">Ponovo dolazim</option>
-          <option value="Drugo">Drugo</option>
+          {REFERRAL_SOURCES.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.value}
+            </option>
+          ))}
         </select>
         {errors.referral_source && (
           <p className="act-error">{errors.referral_source.message}</p>

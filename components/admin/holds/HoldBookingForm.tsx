@@ -1,16 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Cabin, Floor } from "@/lib/db/types";
-
-interface AvailabilityUnit {
-  cabin_id: string;
-  cabin_name: string;
-  floor: Floor;
-  available: boolean;
-  conflict?: { first_name: string; last_name: string };
-}
+import {
+  cabinStatusSuffix,
+  useUnitAvailability,
+} from "@/lib/hooks/useUnitAvailability";
 
 interface Props {
   cabins: Cabin[];
@@ -35,43 +31,18 @@ export function HoldBookingForm({ cabins }: Props) {
   const [units, setUnits] = useState<UnitRow[]>([
     { cabin_id: cabins[0]?.id ?? "", floor: "", people_count: 1 },
   ]);
-  const [availability, setAvailability] = useState<AvailabilityUnit[]>([]);
-  const [checkingAvail, setCheckingAvail] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!arrivalDate || !departureDate || arrivalDate >= departureDate) {
-      setAvailability([]);
-      return;
-    }
-    const ctrl = new AbortController();
-    setCheckingAvail(true);
-    fetch(
-      `/api/availability?arrival=${arrivalDate}&departure=${departureDate}`,
-      { signal: ctrl.signal },
-    )
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => {
-        if (Array.isArray(data)) setAvailability(data);
-      })
-      .catch(() => {})
-      .finally(() => setCheckingAvail(false));
-
-    return () => ctrl.abort();
-  }, [arrivalDate, departureDate]);
-
-  const cabinAvail = useMemo(() => {
-    const map: Record<
-      string,
-      { ground?: AvailabilityUnit; upper?: AvailabilityUnit }
-    > = {};
-    for (const u of availability) {
-      map[u.cabin_id] = map[u.cabin_id] ?? {};
-      map[u.cabin_id][u.floor] = u;
-    }
-    return map;
-  }, [availability]);
+  const {
+    availability,
+    cabinAvail,
+    checking: checkingAvail,
+    loaded: availabilityLoaded,
+  } = useUnitAvailability({
+    arrival: arrivalDate,
+    departure: departureDate,
+  });
 
   const cabinCapacity = (cabinId: string, floor: Floor): number => {
     const cabin = cabins.find((c) => c.id === cabinId);
@@ -356,21 +327,11 @@ export function HoldBookingForm({ cabins }: Props) {
                       }
                     >
                       {cabins.map((c) => {
-                        const a = cabinAvail[c.id];
-                        const bothBusy =
-                          availability.length > 0 &&
-                          a &&
-                          !a.ground?.available &&
-                          !a.upper?.available;
-                        const suffix =
-                          availability.length === 0
-                            ? ""
-                            : bothBusy
-                              ? " - zauzeto"
-                              : a &&
-                                  (!a.ground?.available || !a.upper?.available)
-                                ? " - delimicno"
-                                : " - slobodno";
+                        const { suffix, bothBusy } = cabinStatusSuffix(
+                          c.id,
+                          cabinAvail,
+                          availabilityLoaded,
+                        );
                         return (
                           <option key={c.id} value={c.id} disabled={bothBusy}>
                             {c.name}
@@ -391,7 +352,7 @@ export function HoldBookingForm({ cabins }: Props) {
                       <option
                         value="ground"
                         disabled={
-                          (availability.length > 0 &&
+                          (availabilityLoaded &&
                             cabinAvail[unit.cabin_id]?.ground?.available ===
                               false) ||
                           isUnitUsedElsewhere(idx, unit.cabin_id, "ground")
@@ -402,7 +363,7 @@ export function HoldBookingForm({ cabins }: Props) {
                       <option
                         value="upper"
                         disabled={
-                          (availability.length > 0 &&
+                          (availabilityLoaded &&
                             cabinAvail[unit.cabin_id]?.upper?.available ===
                               false) ||
                           isUnitUsedElsewhere(idx, unit.cabin_id, "upper")
@@ -484,7 +445,6 @@ export function HoldBookingForm({ cabins }: Props) {
         .hbf-label-wide { grid-column: span 3; }
         .hbf-input { padding: 9px 12px; background: rgba(0,0,0,0.28); border: 1px solid rgba(62,140,140,0.2); border-radius: 8px; color: #e8f5f5; font-size: 14px; font-family: inherit; }
         .hbf-input:focus { outline: none; border-color: rgba(199,146,47,0.5); }
-        .hbf-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1) brightness(2); opacity: 1; cursor: pointer; }
         .hbf-btn { padding: 12px 18px; background: linear-gradient(135deg, #7a571e, #c7922f); border: none; border-radius: 8px; color: #fff5df; font-weight: 600; font-size: 14px; cursor: pointer; }
         .hbf-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .hbf-hint { padding: 10px 12px; background: rgba(58,170,112,0.08); border: 1px solid rgba(58,170,112,0.25); border-radius: 8px; color: #a7e8c5; font-size: 13px; }
