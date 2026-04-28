@@ -6,6 +6,7 @@ import {
 } from "@/lib/services/reservationService";
 import { validateToken } from "@/lib/services/linkService";
 import { registrationSchema } from "@/lib/validations/registrationSchema";
+import type { ReservationInsert } from "@/lib/db/types";
 
 /** GET /api/reservations — List reservations (admin only) */
 export async function GET(req: NextRequest) {
@@ -63,6 +64,13 @@ export async function POST(req: NextRequest) {
       date_of_birth: parsed.data.date_of_birth,
       referral_source: parsed.data.referral_source,
       referral_source_other: parsed.data.referral_source_other,
+      selections: parsed.data.selections ?? null,
+      // Cast: Zod schema dozvoljava bilo koji string — server-side validacija
+      // preko computeQuote pravi striktnu proveru.
+      day_schedule_snapshot:
+        (parsed.data.day_schedule_snapshot as ReservationInsert["day_schedule_snapshot"]) ??
+        null,
+      computed_total: parsed.data.computed_total ?? null,
     },
     token,
   );

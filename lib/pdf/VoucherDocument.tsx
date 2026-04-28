@@ -8,7 +8,13 @@ import {
   View,
 } from "@react-pdf/renderer";
 import path from "path";
-import type { Reservation } from "@/lib/db/types";
+import type { Reservation, ServiceCatalogItem } from "@/lib/db/types";
+import {
+  isChoice,
+  selectionKey,
+  type PackageDay,
+  type Selections,
+} from "@/lib/constants/activities";
 
 // Background image path (server-side absolute path)
 const BG_PATH = path.join(
@@ -172,12 +178,68 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
   },
+
+  // Page 2 — raspored po danima
+  page2: {
+    padding: 40,
+    fontFamily: "NotoSans",
+    backgroundColor: "#ffffff",
+  },
+  p2Title: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#1e4d4d",
+    marginBottom: 4,
+  },
+  p2Sub: {
+    fontSize: 11,
+    color: "#445",
+    marginBottom: 18,
+  },
+  p2Day: {
+    marginBottom: 14,
+    paddingBottom: 12,
+    borderBottom: "1pt solid #d4e4e4",
+  },
+  p2DayHead: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#1e4d4d",
+    marginBottom: 6,
+  },
+  p2Row: {
+    flexDirection: "row",
+    marginBottom: 4,
+  },
+  p2RowLabel: {
+    fontSize: 11,
+    fontWeight: "bold",
+    color: "#1e4d4d",
+    width: 80,
+  },
+  p2RowValue: {
+    fontSize: 11,
+    color: "#1e4d4d",
+    flex: 1,
+    flexWrap: "wrap",
+  },
+  p2Total: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: "#e8f5f5",
+    borderRadius: 4,
+    fontSize: 13,
+    color: "#1e4d4d",
+    fontWeight: "bold",
+  },
 });
 
 interface Props {
   reservation: Reservation;
   qrCodeDataUrl: string;
   packageIncludes?: string;
+  schedule?: PackageDay[] | null;
+  catalog?: ServiceCatalogItem[];
 }
 
 // NFC normalization ensures precomposed glyphs (Č, Š, Ž...) are used
@@ -189,6 +251,8 @@ export function VoucherDocument({
   reservation,
   qrCodeDataUrl,
   packageIncludes,
+  schedule,
+  catalog,
 }: Props) {
   const fullName = n(`${reservation.first_name} ${reservation.last_name}`);
 
@@ -214,6 +278,16 @@ export function VoucherDocument({
 
   const packageLabel =
     reservation.package_type ?? "Aktivni Rafting Vikend na Tari";
+
+  // Personalizuj "Uključeno" tekst:
+  //  - skini " (Žurke)" parantezu
+  //  - zameni "Word/Word/Word/..." (3+ opcija) sa onim sto je gost stvarno izabrao
+  const personalizedIncludes = personalizeIncludes(
+    packageIncludes,
+    schedule ?? null,
+    reservation.selections ?? null,
+    catalog ?? [],
+  );
 
   return (
     <Document>
@@ -249,7 +323,7 @@ export function VoucherDocument({
         {/* Included */}
         <Text style={styles.included}>
           {n(
-            `Uključeno: ${packageIncludes ?? "Rafting, 2 noćenja, 2 doručka, 1 ručak, žurka i bend"}`,
+            `Uključeno: ${personalizedIncludes ?? "Rafting, 2 noćenja, 2 doručka, 1 ručak, žurka i bend"}`,
           )}
         </Text>
 
@@ -312,8 +386,147 @@ export function VoucherDocument({
           </View>
         </View>
       </Page>
+
+      {schedule && schedule.length > 0 && (
+        <Page size={[595, 878]} style={styles.page2}>
+          <Text style={styles.p2Title}>{n("Raspored po danima")}</Text>
+          <Text style={styles.p2Sub}>
+            {n(
+              `Vaučer #${reservation.voucher_number ?? ""} · ${fullName} · ${reservation.number_of_people} ${reservation.number_of_people === 1 ? "osoba" : "osoba"}`,
+            )}
+          </Text>
+
+          {schedule.map((day, dayIdx) => {
+            const meals = formatEntries(
+              day.meals,
+              "meals",
+              dayIdx,
+              reservation.selections ?? null,
+              catalog ?? [],
+            );
+            const activities = formatEntries(
+              day.activities,
+              "activities",
+              dayIdx,
+              reservation.selections ?? null,
+              catalog ?? [],
+            );
+            const addonCodes =
+              reservation.selections?.addons?.[String(dayIdx)] ?? [];
+            const addons = addonCodes
+              .map((c) => labelOf(c, catalog ?? []))
+              .join(", ");
+            return (
+              <View key={day.day} style={styles.p2Day} wrap={false}>
+                <Text style={styles.p2DayHead}>{n(`Dan ${day.day}`)}</Text>
+                {meals && (
+                  <View style={styles.p2Row}>
+                    <Text style={styles.p2RowLabel}>{n("Obroci:")}</Text>
+                    <Text style={styles.p2RowValue}>{n(meals)}</Text>
+                  </View>
+                )}
+                {activities && (
+                  <View style={styles.p2Row}>
+                    <Text style={styles.p2RowLabel}>{n("Aktivnosti:")}</Text>
+                    <Text style={styles.p2RowValue}>{n(activities)}</Text>
+                  </View>
+                )}
+                {addons && (
+                  <View style={styles.p2Row}>
+                    <Text style={styles.p2RowLabel}>{n("Dokupljeno:")}</Text>
+                    <Text style={styles.p2RowValue}>{n(addons)}</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+
+          {reservation.computed_total != null && (
+            <Text style={styles.p2Total}>
+              {n(
+                `Ukupno (paket + dodaci): ${Number(reservation.computed_total)} ${reservation.currency}`,
+              )}
+            </Text>
+          )}
+        </Page>
+      )}
     </Document>
   );
+}
+
+// ── Helpers za page 2 ────────────────────────────────────────────
+
+// Bez emojija — NotoSans nema emoji glyph-ove pa se rendera čudno (preklopi).
+// Tekstualni labeli rade isto kao na prvoj strani.
+function labelOf(code: string, catalog: ServiceCatalogItem[]): string {
+  const c = catalog.find((x) => x.code === code);
+  if (c) return c.label;
+  return code;
+}
+
+/**
+ * Personalizuj "includes" tekst paketa za konkretnu rezervaciju:
+ *  - skini parantezu " (Žurke)"
+ *  - "Word/Word/Word/..." (3+ alternativa) → ono sto je gost izabrao
+ *
+ * Ako gost nije izabrao nista (legacy rezervacija), ostavlja originalni tekst.
+ */
+function personalizeIncludes(
+  includes: string | undefined,
+  schedule: PackageDay[] | null,
+  selections: Selections | null,
+  catalog: ServiceCatalogItem[],
+): string | undefined {
+  if (!includes) return includes;
+
+  let result = includes.replace(/\s*\(Žurke\)/g, "");
+
+  // Ako postoji slash-lista i gost je izabrao nesto — zameni
+  const slashRegex = /[A-Za-zČĆĐŠŽčćđšž]+(?:\/[A-Za-zČĆĐŠŽčćđšž]+){2,}/;
+  if (slashRegex.test(result) && schedule && selections?.choices) {
+    // Pronadji prvu izabranu choice opciju
+    let pickedLabel: string | null = null;
+    for (let dayIdx = 0; dayIdx < schedule.length && !pickedLabel; dayIdx++) {
+      const day = schedule[dayIdx];
+      day.activities.forEach((e, entryIdx) => {
+        if (pickedLabel) return;
+        if (isChoice(e)) {
+          const k = selectionKey(dayIdx, "activities", entryIdx);
+          const code = selections.choices?.[k];
+          if (code) pickedLabel = labelOf(code, catalog);
+        }
+      });
+    }
+    if (pickedLabel) {
+      result = result.replace(slashRegex, pickedLabel);
+    }
+  }
+
+  return result.trim();
+}
+
+function formatEntries(
+  entries: (string | string[])[],
+  kind: "meals" | "activities",
+  dayIdx: number,
+  selections: Selections | null,
+  catalog: ServiceCatalogItem[],
+): string {
+  const parts: string[] = [];
+  entries.forEach((e, entryIdx) => {
+    if (isChoice(e)) {
+      const k = selectionKey(dayIdx, kind, entryIdx);
+      const picked = selections?.choices?.[k];
+      if (picked && e.includes(picked)) {
+        parts.push(labelOf(picked, catalog));
+      } else {
+        parts.push(`(nije izabrano: ${e.map((o) => labelOf(o, catalog)).join(" / ")})`);
+      }
+    } else {
+      parts.push(labelOf(e, catalog));
+    }
+  });
+  return parts.join(", ");
 }
 
 // Helper component

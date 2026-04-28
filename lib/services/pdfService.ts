@@ -19,21 +19,46 @@ export async function generateVoucher(reservation: Reservation): Promise<Buffer>
     color: { dark: "#1e4d4d", light: "#ffffff" },
   });
 
-  // Fetch package includes text if a package is linked
+  // Fetch package + day_schedule, plus catalog (za labelovanje selections-a)
   let packageIncludes: string | undefined;
+  let pkgSchedule: Awaited<
+    ReturnType<typeof import("@/lib/services/packageService").listPackages>
+  >[number]["day_schedule"] = null;
+
   if (reservation.package_id) {
     const { createServiceClient } = await import("@/lib/db/supabase");
     const { data: pkg } = await createServiceClient()
       .from("packages")
-      .select("includes")
+      .select("includes, day_schedule")
       .eq("id", reservation.package_id)
       .single();
     packageIncludes = pkg?.includes ?? undefined;
+    pkgSchedule = pkg?.day_schedule ?? null;
+  }
+
+  const { listCatalog } = await import("@/lib/services/catalogService");
+  const catalog = await listCatalog(false).catch(() => []);
+
+  // Merge: snapshot (struktura + choice pozicije) + description iz paketa
+  // (paket pobeđuje da admin može da menja tekst i to se odmah vidi u PDF-u)
+  const snapshot = reservation.day_schedule_snapshot ?? null;
+  let effectiveSchedule = snapshot ?? pkgSchedule ?? null;
+  if (snapshot && pkgSchedule) {
+    effectiveSchedule = snapshot.map((d, i) => ({
+      ...d,
+      description: pkgSchedule![i]?.description ?? d.description,
+    }));
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pdfBuffer = await renderToBuffer(
-    React.createElement(VoucherDocument, { reservation, qrCodeDataUrl, packageIncludes }) as any
+    React.createElement(VoucherDocument, {
+      reservation,
+      qrCodeDataUrl,
+      packageIncludes,
+      schedule: effectiveSchedule,
+      catalog,
+    }) as any
   );
 
   return Buffer.from(pdfBuffer);

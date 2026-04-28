@@ -49,6 +49,67 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  // Auto-recompute computed_total ako se menja paket/datum/broj osoba/selections
+  // a klijent nije eksplicitno poslao novi computed_total
+  const triggersRecompute =
+    body.computed_total === undefined &&
+    (body.package_id !== undefined ||
+      body.arrival_date !== undefined ||
+      body.number_of_people !== undefined ||
+      body.selections !== undefined);
+  if (triggersRecompute) {
+    try {
+      const current = await getReservation(id);
+      const pkgId = body.package_id ?? current.package_id;
+      const arrival = body.arrival_date ?? current.arrival_date;
+      const people = body.number_of_people ?? current.number_of_people;
+
+      // Ako se menja paket — resetuj day_schedule_snapshot i selections
+      // (stare adrese su nevalidne za novi paket).
+      const packageChanged =
+        body.package_id !== undefined && body.package_id !== current.package_id;
+
+      const { createServiceClient } = await import("@/lib/db/supabase");
+      const { data: pkg } = pkgId
+        ? await createServiceClient()
+            .from("packages")
+            .select("*")
+            .eq("id", pkgId)
+            .single()
+        : { data: null };
+
+      let selections = body.selections ?? current.selections ?? null;
+      let snapshot =
+        body.day_schedule_snapshot ?? current.day_schedule_snapshot ?? null;
+      if (packageChanged && pkg) {
+        snapshot = pkg.day_schedule ?? null;
+        selections = {};
+        body.selections = selections;
+        body.day_schedule_snapshot = snapshot;
+        body.package_type = pkg.name;
+      }
+
+      if (pkg && arrival && people) {
+        const { listCatalog } = await import("@/lib/services/catalogService");
+        const { computeQuote, isWeekendArrival } = await import(
+          "@/lib/services/pricingService"
+        );
+        const catalog = await listCatalog(true);
+        const quote = computeQuote({
+          pkg,
+          catalog,
+          selections,
+          weekend: isWeekendArrival(arrival),
+          people,
+          scheduleOverride: snapshot,
+        });
+        body.computed_total = quote.total;
+      }
+    } catch (err) {
+      console.error("[PATCH reservations] recompute failed:", err);
+    }
+  }
+
   const reservation = await updateReservation(id, body);
   return NextResponse.json(reservation);
 }

@@ -63,6 +63,31 @@ export const paymentSchema = z.object({
 });
 
 /**
+ * Step 3 (between group details and payment) — Selections
+ * Posto su izbori opcioni za stari paket flow, validacija je permisivna.
+ * Server-side `computeQuote` daje detaljnu validaciju choice slot-ova.
+ */
+export const selectionsValueSchema = z
+  .object({
+    choices: z.record(z.string(), z.string()).optional(),
+    addons: z.record(z.string(), z.array(z.string())).optional(),
+  })
+  .optional()
+  .nullable();
+
+export const daySnapshotSchema = z
+  .array(
+    z.object({
+      day: z.number(),
+      meals: z.array(z.union([z.string(), z.array(z.string())])),
+      activities: z.array(z.union([z.string(), z.array(z.string())])),
+      addons: z.array(z.string()).optional(),
+    }),
+  )
+  .optional()
+  .nullable();
+
+/**
  * Full registration schema (all 3 steps combined).
  * .merge() skida .refine/.superRefine sa ZodEffects, pa kombinujemo base objekte pa
  * ponovo dodajemo refinement nad spojenom šemom.
@@ -70,6 +95,11 @@ export const paymentSchema = z.object({
 export const registrationSchema = personalInfoBase
   .merge(groupDetailsSchema)
   .merge(paymentSchema)
+  .extend({
+    selections: selectionsValueSchema,
+    day_schedule_snapshot: daySnapshotSchema,
+    computed_total: z.number().nullable().optional(),
+  })
   .superRefine(referralSourceOtherRefine);
 
 export type PersonalInfoValues = z.infer<typeof personalInfoSchema>;

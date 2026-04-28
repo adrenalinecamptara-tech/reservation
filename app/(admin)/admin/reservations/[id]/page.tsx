@@ -3,7 +3,10 @@ import { redirect, notFound } from "next/navigation";
 import { getReservation } from "@/lib/services/reservationService";
 import { listCabins } from "@/lib/services/cabinService";
 import { getSignedDownloadUrl } from "@/lib/services/storageService";
+import { listCatalog } from "@/lib/services/catalogService";
+import { listPackages } from "@/lib/services/packageService";
 import { ReservationActions } from "@/components/admin/reservations/ReservationActions";
+import { SelectionsEditor } from "@/components/admin/reservations/SelectionsEditor";
 
 interface Props {
   params: { id: string };
@@ -28,11 +31,15 @@ export default async function ReservationDetailPage({ params }: Props) {
 
   let reservation,
     cabins,
+    catalog,
+    packages,
     proofUrl: string | null = null;
   try {
-    [reservation, cabins] = await Promise.all([
+    [reservation, cabins, catalog, packages] = await Promise.all([
       getReservation(id),
       listCabins(),
+      listCatalog(false),
+      listPackages(false),
     ]);
     if (reservation.payment_proof_path) {
       proofUrl = await getSignedDownloadUrl(
@@ -42,6 +49,17 @@ export default async function ReservationDetailPage({ params }: Props) {
   } catch {
     notFound();
   }
+
+  // Effective schedule: snapshot iz rezervacije ili paket (ako gost nije imao Faza 2 flow)
+  const linkedPkg =
+    (reservation.package_id
+      ? packages?.find((p) => p.id === reservation.package_id)
+      : undefined) ??
+    (reservation.package_type
+      ? packages?.find((p) => p.name === reservation.package_type)
+      : undefined);
+  const effectiveSchedule =
+    reservation.day_schedule_snapshot ?? linkedPkg?.day_schedule ?? null;
 
   const s = STATUS_LABELS[reservation.status] ?? {
     label: reservation.status,
@@ -117,6 +135,20 @@ export default async function ReservationDetailPage({ params }: Props) {
               value={new Date(reservation.created_at).toLocaleDateString(
                 "sr-Latn-RS",
               )}
+            />
+          </section>
+
+          <section className="adm-card">
+            <h2 className="adm-card-title">Aktivnosti i dodaci</h2>
+            <SelectionsEditor
+              reservationId={reservation.id}
+              packageId={reservation.package_id ?? linkedPkg?.id ?? null}
+              arrivalDate={reservation.arrival_date}
+              people={reservation.number_of_people}
+              schedule={effectiveSchedule}
+              initialSelections={reservation.selections ?? null}
+              initialComputedTotal={reservation.computed_total ?? null}
+              catalog={catalog ?? []}
             />
           </section>
 

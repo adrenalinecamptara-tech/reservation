@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Package } from "@/lib/db/types";
+import { PackageDayScheduleEditor } from "./PackageDayScheduleEditor";
 
 interface Props {
   initialPackages: Package[];
@@ -191,6 +192,10 @@ export function PackagesClient({ initialPackages }: Props) {
                     Uredi
                   </button>
                 </div>
+                <PackageDayScheduleEditor
+                  packageId={pkg.id}
+                  initial={pkg.day_schedule}
+                />
               </div>
             )}
           </div>

@@ -336,6 +336,14 @@ export default async function AdminDashboard() {
           <span>📅</span>
           <span>Kalendar</span>
         </a>
+        <a href="/admin/operations" className="adm-dash-link">
+          <span>🍳</span>
+          <span>Operativa</span>
+        </a>
+        <a href="/admin/services" className="adm-dash-link">
+          <span>💶</span>
+          <span>Katalog usluga</span>
+        </a>
         <a href="/admin/partners" className="adm-dash-link">
           <span>🤝</span>
           <span>Partneri</span>

@@ -4,13 +4,14 @@ import { useEffect } from "react";
 import { useRegistrationStore } from "@/lib/store/registrationStore";
 import { PersonalInfoStep } from "./steps/PersonalInfoStep";
 import { GroupDetailsStep } from "./steps/GroupDetailsStep";
+import { ActivitiesStep } from "./steps/ActivitiesStep";
 import { PaymentStep } from "./steps/PaymentStep";
 
 interface Props {
   token: string;
 }
 
-const STEPS = ["Lični podaci", "Detalji dolaska", "Uplata"];
+const STEPS = ["Lični podaci", "Detalji dolaska", "Aktivnosti", "Uplata"];
 
 export function RegistrationForm({ token }: Props) {
   const { step, setToken } = useRegistrationStore();
@@ -40,7 +41,7 @@ export function RegistrationForm({ token }: Props) {
         </div>
 
         {/* Step indicator */}
-        <div className="act-steps" role="progressbar" aria-valuenow={step} aria-valuemax={3}>
+        <div className="act-steps" role="progressbar" aria-valuenow={step} aria-valuemax={4}>
           {STEPS.map((label, i) => {
             const num = i + 1;
             const state = num < step ? "done" : num === step ? "active" : "idle";
@@ -66,7 +67,8 @@ export function RegistrationForm({ token }: Props) {
         <div className="act-body">
           {step === 1 && <PersonalInfoStep />}
           {step === 2 && <GroupDetailsStep />}
-          {step === 3 && <PaymentStep token={token} />}
+          {step === 3 && <ActivitiesStep />}
+          {step === 4 && <PaymentStep token={token} />}
         </div>
       </div>
 

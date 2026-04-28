@@ -23,6 +23,26 @@ export interface Package {
   status: "active" | "inactive";
   sort_order: number;
   created_at: string;
+  day_schedule: import("@/lib/constants/activities").PackageDay[] | null;
+}
+
+export type ServiceCategory = "meal" | "activity" | "marker";
+export type ServiceUnit = "per_person" | "flat";
+
+export interface ServiceCatalogItem {
+  code: string;
+  label: string;
+  category: ServiceCategory;
+  emoji: string | null;
+  unit: ServiceUnit;
+  price: number;
+  duration_hours: number | null;
+  description: string | null;
+  active: boolean;
+  is_addon_eligible: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Cabin {
@@ -95,6 +115,12 @@ export interface Reservation {
   date_of_birth?: string | null; // ISO date string
   referral_source?: string | null;
   referral_source_other?: string | null;
+  // Faza 2: gostov izbor (choice slots + addons), snapshot rasporeda i izracunata cena
+  selections?: import("@/lib/constants/activities").Selections | null;
+  day_schedule_snapshot?:
+    | import("@/lib/constants/activities").PackageDay[]
+    | null;
+  computed_total?: number | null;
 }
 
 export interface ReservationInsert {
@@ -121,6 +147,11 @@ export interface ReservationInsert {
   date_of_birth?: string | null;
   referral_source?: string | null;
   referral_source_other?: string | null;
+  selections?: import("@/lib/constants/activities").Selections | null;
+  day_schedule_snapshot?:
+    | import("@/lib/constants/activities").PackageDay[]
+    | null;
+  computed_total?: number | null;
 }
 
 export interface ReservationUpdate {
@@ -154,6 +185,11 @@ export interface ReservationUpdate {
   date_of_birth?: string | null;
   referral_source?: string | null;
   referral_source_other?: string | null;
+  selections?: import("@/lib/constants/activities").Selections | null;
+  day_schedule_snapshot?:
+    | import("@/lib/constants/activities").PackageDay[]
+    | null;
+  computed_total?: number | null;
 }
 
 export interface ReservationUnit {
@@ -311,6 +347,11 @@ export type Database = {
         Row: ReservationHoldUnit;
         Insert: Omit<ReservationHoldUnit, "id" | "created_at">;
         Update: Partial<Omit<ReservationHoldUnit, "id" | "created_at">>;
+      };
+      service_catalog: {
+        Row: ServiceCatalogItem;
+        Insert: Omit<ServiceCatalogItem, "created_at" | "updated_at">;
+        Update: Partial<Omit<ServiceCatalogItem, "code" | "created_at" | "updated_at">>;
       };
     };
     Enums: {

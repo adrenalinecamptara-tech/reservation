@@ -10,14 +10,104 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-import type { Reservation } from "@/lib/db/types";
+import type { Reservation, ServiceCatalogItem } from "@/lib/db/types";
+import {
+  isChoice,
+  selectionKey,
+  type PackageDay,
+} from "@/lib/constants/activities";
 
 interface Props {
   reservation: Reservation;
   isUpdate?: boolean;
+  schedule?: PackageDay[] | null;
+  catalog?: ServiceCatalogItem[];
 }
 
-export function GuestVoucherEmail({ reservation, isUpdate = false }: Props) {
+function labelOf(code: string, catalog: ServiceCatalogItem[]): string {
+  const c = catalog.find((x) => x.code === code);
+  return c?.label ?? code;
+}
+
+function formatEntries(
+  entries: (string | string[])[],
+  kind: "meals" | "activities",
+  dayIdx: number,
+  reservation: Reservation,
+  catalog: ServiceCatalogItem[],
+): string {
+  const sel = reservation.selections ?? {};
+  const parts: string[] = [];
+  entries.forEach((e, entryIdx) => {
+    if (isChoice(e)) {
+      const key = selectionKey(dayIdx, kind, entryIdx);
+      const picked = sel.choices?.[key];
+      if (picked && e.includes(picked)) parts.push(labelOf(picked, catalog));
+    } else {
+      parts.push(labelOf(e, catalog));
+    }
+  });
+  return parts.join(", ");
+}
+
+const WEEKDAYS_SR = [
+  "Nedelja",
+  "Ponedeljak",
+  "Utorak",
+  "Sreda",
+  "Četvrtak",
+  "Petak",
+  "Subota",
+];
+
+function weekdayFor(arrivalIso: string, dayIdx: number): string {
+  const d = new Date(arrivalIso + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + dayIdx);
+  return WEEKDAYS_SR[d.getUTCDay()] ?? "";
+}
+
+/** Aktivnosti dana spojene sa " + " — choice rezolvovan iz selections. */
+function activitiesTitle(
+  entries: (string | string[])[],
+  dayIdx: number,
+  reservation: Reservation,
+  catalog: ServiceCatalogItem[],
+): string {
+  const sel = reservation.selections ?? {};
+  const parts: string[] = [];
+  entries.forEach((e, entryIdx) => {
+    if (isChoice(e)) {
+      const k = selectionKey(dayIdx, "activities", entryIdx);
+      const picked = sel.choices?.[k];
+      if (picked && e.includes(picked)) parts.push(labelOf(picked, catalog));
+    } else {
+      parts.push(labelOf(e, catalog));
+    }
+  });
+  return parts.join(" + ");
+}
+
+/**
+ * Subotom (osim zadnjeg dana) dodajemo napomenu "(Živa svirka)".
+ * Ostali dani — ništa.
+ */
+function eveningEntertainment(
+  arrivalIso: string,
+  dayIdx: number,
+  totalDays: number,
+): string | null {
+  const isLast = dayIdx === totalDays - 1;
+  if (isLast) return null;
+  const isSaturday = weekdayFor(arrivalIso, dayIdx) === "Subota";
+  return isSaturday ? "(Živa svirka)" : null;
+}
+
+export function GuestVoucherEmail({
+  reservation,
+  isUpdate = false,
+  schedule,
+  catalog = [],
+}: Props) {
   const firstName = reservation.first_name;
 
   return (
@@ -91,29 +181,105 @@ export function GuestVoucherEmail({ reservation, isUpdate = false }: Props) {
 
           <Hr style={hr} />
 
-          {/* Schedule */}
+          {/* Schedule — dynamic per reservation */}
           <Section style={section}>
             <Heading as="h2" style={sectionTitle}>
               Šta te čeka
             </Heading>
-            <Text style={body_text}>
-              <strong>Petak — Dolazak</strong>
-              <br />
-              Dodji kad možeš, sobe su spremne. Uveče večera, pa DJ i muzika u
-              restoranu.
-            </Text>
-            <Text style={body_text}>
-              <strong>Subota — Rafting dan</strong>
-              <br />
-              Doručak do 10h, polazak na rafting u 11h. Po povratku ručak,
-              slobodno vreme, odbojka, bilijar. Uveče večera i živa muzika.
-            </Text>
-            <Text style={body_text}>
-              <strong>Nedelja — Odlazak</strong>
-              <br />
-              Doručak, i polako se spremi za povratak u realnost prepun utiska i
-              energije.
-            </Text>
+            {schedule && schedule.length > 0 ? (
+              schedule.map((day, dayIdx) => {
+                const addons = (
+                  reservation.selections?.addons?.[String(dayIdx)] ?? []
+                )
+                  .map((c) => labelOf(c, catalog))
+                  .join(", ");
+
+                // Naslov: "Petak — Dolazak + Žurka"
+                const weekday = weekdayFor(reservation.arrival_date, dayIdx);
+                const acts = activitiesTitle(
+                  day.activities,
+                  dayIdx,
+                  reservation,
+                  catalog,
+                );
+                const heading = acts ? `${weekday} — ${acts}` : weekday;
+
+                const evening = eveningEntertainment(
+                  reservation.arrival_date,
+                  dayIdx,
+                  schedule.length,
+                );
+
+                // Ako ima ručno opisan dan, koristi opis
+                if (day.description) {
+                  return (
+                    <Text key={day.day} style={body_text}>
+                      <strong>{heading}</strong>
+                      <br />
+                      {day.description}
+                      {evening && <> {evening}</>}
+                      {addons && (
+                        <>
+                          <br />
+                          <em>Dokupljeno: {addons}</em>
+                        </>
+                      )}
+                    </Text>
+                  );
+                }
+                const meals = formatEntries(
+                  day.meals,
+                  "meals",
+                  dayIdx,
+                  reservation,
+                  catalog,
+                );
+                return (
+                  <Text key={day.day} style={body_text}>
+                    <strong>{heading}</strong>
+                    {meals && (
+                      <>
+                        <br />
+                        Obroci: {meals}
+                      </>
+                    )}
+                    {evening && (
+                      <>
+                        <br />
+                        {evening}
+                      </>
+                    )}
+                    {addons && (
+                      <>
+                        <br />
+                        <em>Dokupljeno: {addons}</em>
+                      </>
+                    )}
+                  </Text>
+                );
+              })
+            ) : (
+              <>
+                <Text style={body_text}>
+                  <strong>Petak — Dolazak</strong>
+                  <br />
+                  Dođi kad možeš, sobe su spremne. Uveče večera, pa DJ i muzika
+                  u restoranu.
+                </Text>
+                <Text style={body_text}>
+                  <strong>Subota — Rafting dan</strong>
+                  <br />
+                  Doručak do 10h, polazak na rafting u 11h. Po povratku ručak,
+                  slobodno vreme, odbojka, bilijar. Uveče večera i živa muzika.
+                </Text>
+                <Text style={body_text}>
+                  <strong>Nedelja — Odlazak</strong>
+                  <br />
+                  Doručak, i polako se spremi za povratak u realnost prepun
+                  utiska i energije.
+                </Text>
+              </>
+            )}
           </Section>
 
           <Hr style={hr} />

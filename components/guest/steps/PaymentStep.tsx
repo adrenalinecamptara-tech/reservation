@@ -20,8 +20,17 @@ type UploadState = "idle" | "uploading" | "done" | "error";
 
 export function PaymentStep({ token }: Props) {
   const router = useRouter();
-  const { personalInfo, groupDetails, payment, setPayment, prevStep, reset } =
-    useRegistrationStore();
+  const {
+    personalInfo,
+    groupDetails,
+    payment,
+    selections,
+    daySnapshot,
+    computedTotal,
+    setPayment,
+    prevStep,
+    reset,
+  } = useRegistrationStore();
 
   // total_amount may be pre-calculated in step 2 when a package was selected
   const prefilledTotal = payment.total_amount ?? null;
@@ -152,6 +161,9 @@ export function PaymentStep({ token }: Props) {
         total_amount: prefilledTotal ?? data.total_amount,
         currency: "EUR",
         invite_link_id: null,
+        selections,
+        day_schedule_snapshot: daySnapshot,
+        computed_total: computedTotal,
       };
 
       const res = await fetch(`/api/reservations?token=${token}`, {
