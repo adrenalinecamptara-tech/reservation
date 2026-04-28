@@ -72,7 +72,7 @@ export async function listPartnerBookings(): Promise<PartnerBooking[]> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("partner_bookings")
-    .select("*, partner:partners(*), cabin:cabins(*)")
+    .select("*, partner:partners(*), cabin:cabins(*), package:packages(*)")
     .order("arrival_date", { ascending: false });
   if (error) throw new Error(`Failed to list partner bookings: ${error.message}`);
   return (data ?? []) as PartnerBooking[];
@@ -85,7 +85,7 @@ export async function getMonthPartnerBookings(
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("partner_bookings")
-    .select("*, partner:partners(*), cabin:cabins(*)")
+    .select("*, partner:partners(*), cabin:cabins(*), package:packages(*)")
     .lt("arrival_date", endExclusiveIso);
   if (error) throw new Error(`Failed to load partner bookings: ${error.message}`);
   return ((data ?? []) as PartnerBooking[]).filter((b) => {
@@ -152,7 +152,7 @@ export async function createPartnerBooking(
   const { data, error } = await supabase
     .from("partner_bookings")
     .insert(input)
-    .select("*, partner:partners(*), cabin:cabins(*)")
+    .select("*, partner:partners(*), cabin:cabins(*), package:packages(*)")
     .single();
   if (error || !data) throw new Error(`Failed to create partner booking: ${error?.message}`);
   return data as PartnerBooking;

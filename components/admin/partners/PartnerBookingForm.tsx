@@ -17,9 +17,10 @@ function addDaysISO(iso: string, n: number): string {
 interface Props {
   partners: Partner[];
   cabins: Cabin[];
+  packages: Array<{ id: string; name: string; status: string }>;
 }
 
-export function PartnerBookingForm({ partners, cabins }: Props) {
+export function PartnerBookingForm({ partners, cabins, packages }: Props) {
   const router = useRouter();
 
   const [partnerId, setPartnerId] = useState(partners[0]?.id ?? "");
@@ -31,6 +32,7 @@ export function PartnerBookingForm({ partners, cabins }: Props) {
   const [pricePerPerson, setPricePerPerson] = useState(
     partners[0]?.default_price_per_person ?? 25
   );
+  const [packageId, setPackageId] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +90,7 @@ export function PartnerBookingForm({ partners, cabins }: Props) {
           nights,
           number_of_people: numberOfPeople,
           price_per_person: pricePerPerson,
+          package_id: packageId || null,
           notes: notes.trim() || null,
         }),
       });
@@ -271,6 +274,24 @@ export function PartnerBookingForm({ partners, cabins }: Props) {
             />
           </label>
         </div>
+
+        <label className="pbf-label">
+          <span>Paket (opciono — ako jedu / koriste aktivnosti)</span>
+          <select
+            value={packageId}
+            onChange={(e) => setPackageId(e.target.value)}
+            className="pbf-input"
+          >
+            <option value="">Bez paketa — samo spavanje</option>
+            {packages
+              .filter((p) => p.status === "active")
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+          </select>
+        </label>
 
         <label className="pbf-label">
           <span>Napomena (opciono)</span>

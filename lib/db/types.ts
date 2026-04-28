@@ -230,8 +230,10 @@ export interface PartnerBooking {
   paid_by: string | null;
   created_by: string | null;
   created_at: string;
+  package_id: string | null;
   partner?: Partner;
   cabin?: Cabin;
+  package?: Package;
 }
 
 export interface PartnerBookingInsert {
@@ -244,6 +246,7 @@ export interface PartnerBookingInsert {
   price_per_person: number;
   notes?: string | null;
   created_by?: string | null;
+  package_id?: string | null;
 }
 
 export interface ReservationHold {

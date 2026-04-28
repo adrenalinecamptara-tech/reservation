@@ -6,6 +6,7 @@ import {
   partnerBookingTotal,
 } from "@/lib/services/partnerService";
 import { listCabins } from "@/lib/services/cabinService";
+import { listPackages } from "@/lib/services/packageService";
 import { PartnerBookingForm } from "@/components/admin/partners/PartnerBookingForm";
 import { PartnerBookingList } from "@/components/admin/partners/PartnerBookingList";
 import { PartnersManager } from "@/components/admin/partners/PartnersManager";
@@ -15,10 +16,11 @@ export default async function AdminPartnersPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/admin/login");
 
-  const [partners, bookings, cabins] = await Promise.all([
+  const [partners, bookings, cabins, packages] = await Promise.all([
     listPartners(),
     listPartnerBookings(),
     listCabins(),
+    listPackages(true),
   ]);
 
   const totalEarned = bookings.reduce((s, b) => s + partnerBookingTotal(b), 0);
@@ -53,7 +55,11 @@ export default async function AdminPartnersPage() {
 
       <section className="adp-section">
         <h2 className="adp-section-title">Nova rezervacija</h2>
-        <PartnerBookingForm partners={partners} cabins={cabins} />
+        <PartnerBookingForm
+          partners={partners}
+          cabins={cabins}
+          packages={packages}
+        />
       </section>
 
       <section className="adp-section">

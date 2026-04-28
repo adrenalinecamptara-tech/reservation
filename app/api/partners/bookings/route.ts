@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
       number_of_people: Number(body.number_of_people),
       price_per_person: Number(body.price_per_person),
       notes: body.notes ?? null,
+      package_id: body.package_id ? String(body.package_id) : null,
       created_by: user.email ?? user.id,
     });
     return NextResponse.json(booking);

@@ -60,6 +60,16 @@ export function PartnerBookingList({ bookings }: Props) {
                 <span>📅 {fmt(b.arrival_date)} → {fmt(departure)} ({b.nights} {b.nights === 1 ? "noć" : "noći"})</span>
                 <span>🏠 {b.cabin?.name ?? "—"} · {b.floor === "ground" ? "Prizemlje" : "Sprat"}</span>
                 <span>👥 {b.number_of_people} osoba</span>
+                <span>
+                  📦{" "}
+                  {b.package?.name ? (
+                    <strong>{b.package.name}</strong>
+                  ) : (
+                    <em style={{ color: "rgba(168,213,213,0.5)" }}>
+                      bez paketa
+                    </em>
+                  )}
+                </span>
                 <span>💶 {Number(b.price_per_person)} €/os/noć · <strong>{total} €</strong></span>
               </div>
               {b.notes && <div className="pbl-notes">{b.notes}</div>}

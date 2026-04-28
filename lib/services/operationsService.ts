@@ -151,7 +151,11 @@ function applyReservation(
     res.day_schedule_snapshot ?? pkg?.day_schedule ?? null;
   const sel: Selections = res.selections ?? {};
 
-  const stayDays = eachDayInRange(res.arrival_date, departure);
+  const stayNights = eachDayInRange(res.arrival_date, departure);
+  // Iteriramo i dan odlaska (zadnji dan iz day_schedule-a) jer i taj dan
+  // ima obroke/aktivnosti (npr. doručak ujutru pre odlaska).
+  const totalDays = Math.max(stayNights.length, schedule?.length ?? 0);
+
   // Jedinice po sobama (multi-unit) ili fallback na pojedinacni cabin/floor
   const units =
     res.reservation_units && res.reservation_units.length > 0
@@ -166,26 +170,29 @@ function applyReservation(
           ]
         : [];
 
-  stayDays.forEach((iso, idx) => {
+  for (let idx = 0; idx < totalDays; idx++) {
+    const iso = addDays(res.arrival_date, idx);
     const dayOps = byDate.get(iso);
-    if (!dayOps) return;
-    dayOps.inCampPeople += res.number_of_people;
+    if (!dayOps) continue;
 
-    // Provera prekapaciteta po jedinici
-    for (const u of units) {
-      pushExtraBed(
-        dayOps,
-        cabinMap.get(u.cabin_id),
-        u.floor,
-        u.people_count,
-        ref.name,
-      );
+    // inCamp i extraBeds samo za noći boravka (ne za dan odlaska)
+    if (idx < stayNights.length) {
+      dayOps.inCampPeople += res.number_of_people;
+      for (const u of units) {
+        pushExtraBed(
+          dayOps,
+          cabinMap.get(u.cabin_id),
+          u.floor,
+          u.people_count,
+          ref.name,
+        );
+      }
     }
 
-    if (!schedule || schedule.length === 0) return;
+    if (!schedule || schedule.length === 0) continue;
     const entry =
       schedule.find((s) => s.day === idx + 1) ?? schedule[schedule.length - 1];
-    if (!entry) return;
+    if (!entry) continue;
 
     // Meals (static + razresen choice)
     entry.meals.forEach((e, entryIdx) => {
@@ -221,15 +228,19 @@ function applyReservation(
         pushActivity(dayOps, code, ref);
       }
     }
-  });
+  }
 }
 
 /**
- * Partneri: pretpostavljamo da jedu u kampu (3 obroka/dan tokom boravka).
- * Bez aktivnosti — partneri vode svoj program.
+ * Partneri:
+ *  - Ako imaju izabran paket (package_id) → tretiramo ih kao goste tog paketa
+ *    (sve iz day_schedule: obroci + aktivnosti). Choice slot → prva opcija
+ *    (partneri ne biraju kroz formu).
+ *  - Bez paketa → samo dolazak/odlazak, NIŠTA drugo (samo spavanje).
  */
 function applyPartnerBooking(
   b: PartnerBooking,
+  pkg: Package | undefined,
   cabinMap: Map<string, Cabin>,
   byDate: Map<string, DayOperations>,
 ) {
@@ -247,28 +258,43 @@ function applyPartnerBooking(
   const dep = byDate.get(departure);
   if (dep) dep.departures.push(ref);
 
-  const stayDays = eachDayInRange(b.arrival_date, departure);
-  stayDays.forEach((iso, idx) => {
+  const schedule = pkg?.day_schedule ?? null;
+  const stayNights = eachDayInRange(b.arrival_date, departure);
+  // Iteriramo i dan odlaska zbog obroka iz day_schedule-a
+  const totalDays = Math.max(stayNights.length, schedule?.length ?? 0);
+
+  for (let idx = 0; idx < totalDays; idx++) {
+    const iso = addDays(b.arrival_date, idx);
     const dayOps = byDate.get(iso);
-    if (!dayOps) return;
-    dayOps.inCampPeople += b.number_of_people;
-    pushExtraBed(
-      dayOps,
-      cabinMap.get(b.cabin_id),
-      b.floor,
-      b.number_of_people,
-      name,
-    );
-    if (idx === 0) {
-      dayOps.meals.dinner += b.number_of_people;
-    } else {
-      dayOps.meals.breakfast += b.number_of_people;
-      dayOps.meals.lunch += b.number_of_people;
-      dayOps.meals.dinner += b.number_of_people;
+    if (!dayOps) continue;
+
+    // inCamp i extraBeds samo za noći boravka
+    if (idx < stayNights.length) {
+      dayOps.inCampPeople += b.number_of_people;
+      pushExtraBed(
+        dayOps,
+        cabinMap.get(b.cabin_id),
+        b.floor,
+        b.number_of_people,
+        name,
+      );
     }
-  });
-  const depDay = byDate.get(departure);
-  if (depDay) depDay.meals.breakfast += b.number_of_people;
+
+    if (!schedule || schedule.length === 0) continue; // bez paketa: ništa drugo
+    const entry =
+      schedule.find((s) => s.day === idx + 1) ?? schedule[schedule.length - 1];
+    if (!entry) continue;
+
+    // Partneri nemaju selections — choice slot uzima prvu opciju
+    entry.meals.forEach((e) => {
+      const code = isChoice(e) ? e[0] : e;
+      if (code && isMeal(code)) dayOps.meals[code] += b.number_of_people;
+    });
+    entry.activities.forEach((e) => {
+      const code = isChoice(e) ? e[0] : e;
+      if (code && isActivity(code)) pushActivity(dayOps, code, ref);
+    });
+  }
 }
 
 export async function getWeekOperations(
@@ -288,7 +314,7 @@ export async function getWeekOperations(
       supabase
         .from("partner_bookings")
         .select(
-          "id, partner_id, cabin_id, floor, arrival_date, nights, number_of_people, price_per_person, notes, paid_at, paid_by, created_by, created_at, partner:partners(name)",
+          "id, partner_id, cabin_id, floor, arrival_date, nights, number_of_people, price_per_person, notes, paid_at, paid_by, created_by, created_at, package_id, partner:partners(name)",
         )
         .lt("arrival_date", endExclusive),
       supabase.from("packages").select("*"),
@@ -338,7 +364,8 @@ export async function getWeekOperations(
   for (const b of partners) {
     const dep = addDays(b.arrival_date, b.nights);
     if (!rangesOverlap(b.arrival_date, dep, startIso, endExclusive)) continue;
-    applyPartnerBooking(b, cabinMap, byDate);
+    const pkg = b.package_id ? pkgById.get(b.package_id) : undefined;
+    applyPartnerBooking(b, pkg, cabinMap, byDate);
   }
 
   return {
