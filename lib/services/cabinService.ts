@@ -176,13 +176,10 @@ export async function setReservationUnits(
   for (const u of units) {
     const cabin = cabinMap.get(u.cabin_id);
     if (!cabin) throw new Error("Izabrani bungalov ne postoji.");
-    const cap = u.floor === "ground" ? cabin.ground_beds : cabin.upper_beds;
     if (u.people_count < 1) throw new Error("Broj ljudi u sobi mora biti ≥ 1.");
-    if (u.people_count > cap) {
-      throw new Error(
-        `${cabin.name} – ${u.floor === "ground" ? "Prizemlje" : "Sprat"}: max ${cap} mesta.`,
-      );
-    }
+    // Kapacitet (ground_beds/upper_beds) više nije tvrda granica — admin može
+    // dodeliti više osoba, a worker dashboard će označiti potrebu za dodatnim
+    // krevetom.
   }
 
   const totalPeople = units.reduce((s, u) => s + u.people_count, 0);

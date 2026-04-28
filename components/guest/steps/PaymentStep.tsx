@@ -98,11 +98,19 @@ export function PaymentStep({ token }: Props) {
 
       setUploadState("uploading");
       try {
-        // Compress images before upload (skip PDF)
+        // Compress images before upload (skip PDF — PDF se uploaduje as-is)
         let fileToUpload: File = file;
 
         // Build structured filename: Depozit_Ime_Prezime_Datum.ext
-        const ext = file.name.split(".").pop() ?? "jpg";
+        // Ekstenzija iz MIME tipa (pouzdanije nego file.name kod nekih klijenata)
+        const extByMime: Record<string, string> = {
+          "application/pdf": "pdf",
+          "image/jpeg": "jpg",
+          "image/png": "png",
+          "image/webp": "webp",
+        };
+        const ext =
+          extByMime[file.type] ?? file.name.split(".").pop() ?? "jpg";
         const firstName = (personalInfo.first_name ?? "").replace(/\s+/g, "");
         const lastName = (personalInfo.last_name ?? "").replace(/\s+/g, "");
         const idCard = (personalInfo.id_card_number ?? "").replace(/\s+/g, "");

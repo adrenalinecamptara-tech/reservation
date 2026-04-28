@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/db/supabase";
 import type {
+  Cabin,
   Package,
   PartnerBooking,
   Reservation,
@@ -28,6 +29,14 @@ export interface GuestRef {
   kind: "guest" | "partner";
 }
 
+export interface ExtraBedNeeded {
+  cabinName: string;
+  floor: "ground" | "upper";
+  occupancy: number;
+  capacity: number;
+  guestName: string;
+}
+
 export interface DayOperations {
   date: string;
   dayLabel: string;
@@ -36,6 +45,7 @@ export interface DayOperations {
   inCampPeople: number;
   meals: Record<MealType, number>;
   activities: Partial<Record<ActivityType, GuestRef[]>>;
+  extraBeds: ExtraBedNeeded[];
 }
 
 export interface WeekOperations {
@@ -85,9 +95,38 @@ function isActivity(code: string): code is ActivityType {
  *   - meal codes (breakfast/lunch/dinner) idu u meals counter
  *   - activity codes idu u activities listu sa GuestRef
  */
+interface ReservationWithUnits extends Reservation {
+  reservation_units?: Array<{
+    cabin_id: string;
+    floor: "ground" | "upper";
+    people_count: number;
+  }>;
+}
+
+function pushExtraBed(
+  dayOps: DayOperations,
+  cabin: Cabin | undefined,
+  floor: "ground" | "upper",
+  peopleCount: number,
+  guestName: string,
+) {
+  if (!cabin) return;
+  const cap = floor === "ground" ? cabin.ground_beds : cabin.upper_beds;
+  if (peopleCount > cap) {
+    dayOps.extraBeds.push({
+      cabinName: cabin.name,
+      floor,
+      occupancy: peopleCount,
+      capacity: cap,
+      guestName,
+    });
+  }
+}
+
 function applyReservation(
-  res: Reservation,
+  res: ReservationWithUnits,
   pkg: Package | undefined,
+  cabinMap: Map<string, Cabin>,
   byDate: Map<string, DayOperations>,
 ) {
   const departure = deriveDeparture(
@@ -113,10 +152,35 @@ function applyReservation(
   const sel: Selections = res.selections ?? {};
 
   const stayDays = eachDayInRange(res.arrival_date, departure);
+  // Jedinice po sobama (multi-unit) ili fallback na pojedinacni cabin/floor
+  const units =
+    res.reservation_units && res.reservation_units.length > 0
+      ? res.reservation_units
+      : res.cabin_id && res.floor
+        ? [
+            {
+              cabin_id: res.cabin_id,
+              floor: res.floor,
+              people_count: res.number_of_people,
+            },
+          ]
+        : [];
+
   stayDays.forEach((iso, idx) => {
     const dayOps = byDate.get(iso);
     if (!dayOps) return;
     dayOps.inCampPeople += res.number_of_people;
+
+    // Provera prekapaciteta po jedinici
+    for (const u of units) {
+      pushExtraBed(
+        dayOps,
+        cabinMap.get(u.cabin_id),
+        u.floor,
+        u.people_count,
+        ref.name,
+      );
+    }
 
     if (!schedule || schedule.length === 0) return;
     const entry =
@@ -166,6 +230,7 @@ function applyReservation(
  */
 function applyPartnerBooking(
   b: PartnerBooking,
+  cabinMap: Map<string, Cabin>,
   byDate: Map<string, DayOperations>,
 ) {
   const departure = addDays(b.arrival_date, b.nights);
@@ -187,6 +252,13 @@ function applyPartnerBooking(
     const dayOps = byDate.get(iso);
     if (!dayOps) return;
     dayOps.inCampPeople += b.number_of_people;
+    pushExtraBed(
+      dayOps,
+      cabinMap.get(b.cabin_id),
+      b.floor,
+      b.number_of_people,
+      name,
+    );
     if (idx === 0) {
       dayOps.meals.dinner += b.number_of_people;
     } else {
@@ -206,28 +278,33 @@ export async function getWeekOperations(
   const endExclusive = addDays(startIso, days);
   const supabase = createServiceClient();
 
-  const [resResult, partnerResult, packagesResult] = await Promise.all([
-    supabase
-      .from("reservations")
-      .select("*")
-      .in("status", ["approved", "modified", "paid"] as const)
-      .lt("arrival_date", endExclusive),
-    supabase
-      .from("partner_bookings")
-      .select(
-        "id, partner_id, cabin_id, floor, arrival_date, nights, number_of_people, price_per_person, notes, paid_at, paid_by, created_by, created_at, partner:partners(name)",
-      )
-      .lt("arrival_date", endExclusive),
-    supabase.from("packages").select("*"),
-  ]);
+  const [resResult, partnerResult, packagesResult, cabinsResult] =
+    await Promise.all([
+      supabase
+        .from("reservations")
+        .select("*, reservation_units(cabin_id, floor, people_count)")
+        .in("status", ["approved", "modified", "paid"] as const)
+        .lt("arrival_date", endExclusive),
+      supabase
+        .from("partner_bookings")
+        .select(
+          "id, partner_id, cabin_id, floor, arrival_date, nights, number_of_people, price_per_person, notes, paid_at, paid_by, created_by, created_at, partner:partners(name)",
+        )
+        .lt("arrival_date", endExclusive),
+      supabase.from("packages").select("*"),
+      supabase.from("cabins").select("*"),
+    ]);
 
   if (resResult.error) throw new Error(resResult.error.message);
   if (partnerResult.error) throw new Error(partnerResult.error.message);
   if (packagesResult.error) throw new Error(packagesResult.error.message);
+  if (cabinsResult.error) throw new Error(cabinsResult.error.message);
 
-  const reservations = (resResult.data ?? []) as Reservation[];
+  const reservations = (resResult.data ?? []) as ReservationWithUnits[];
   const partners = (partnerResult.data ?? []) as unknown as PartnerBooking[];
   const packages = (packagesResult.data ?? []) as Package[];
+  const cabins = (cabinsResult.data ?? []) as Cabin[];
+  const cabinMap = new Map(cabins.map((c) => [c.id, c]));
   const pkgById = new Map(packages.map((p) => [p.id, p]));
   const pkgByName = new Map(packages.map((p) => [p.name, p]));
 
@@ -240,6 +317,7 @@ export async function getWeekOperations(
       inCampPeople: 0,
       meals: emptyMeals(),
       activities: {},
+      extraBeds: [],
     }),
   );
   const byDate = new Map(dayList.map((d) => [d.date, d]));
@@ -254,13 +332,13 @@ export async function getWeekOperations(
     const pkg =
       (r.package_id ? pkgById.get(r.package_id) : undefined) ??
       (r.package_type ? pkgByName.get(r.package_type) : undefined);
-    applyReservation(r, pkg, byDate);
+    applyReservation(r, pkg, cabinMap, byDate);
   }
 
   for (const b of partners) {
     const dep = addDays(b.arrival_date, b.nights);
     if (!rangesOverlap(b.arrival_date, dep, startIso, endExclusive)) continue;
-    applyPartnerBooking(b, byDate);
+    applyPartnerBooking(b, cabinMap, byDate);
   }
 
   return {

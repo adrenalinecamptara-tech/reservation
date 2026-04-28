@@ -353,11 +353,8 @@ export function ReservationActions({ reservation, cabins }: Props) {
         alert("Svaka soba mora imati bar 1 osobu.");
         return;
       }
-      const cap = cabinCapacity(u.cabin_id, u.floor);
-      if (u.people_count > cap) {
-        alert(`Izabrana soba prima max ${cap} osoba.`);
-        return;
-      }
+      // Kapacitet više ne blokira — vizuelno upozorenje u UI-u + extraBeds
+      // info na worker dashboardu pokriva ovaj slučaj.
     }
     if (totalPeopleInUnits !== reservation.number_of_people) {
       alert(
@@ -844,7 +841,6 @@ export function ReservationActions({ reservation, cabins }: Props) {
                     className="adm-input adm-unit-people"
                     type="number"
                     min={1}
-                    max={cap || undefined}
                     value={u.people_count}
                     onChange={(e) =>
                       updateUnit(idx, {
@@ -877,7 +873,7 @@ export function ReservationActions({ reservation, cabins }: Props) {
                       `Zauzeto: ${conflict.conflict.first_name} ${conflict.conflict.last_name}. `}
                     {cap > 0 &&
                       u.people_count > cap &&
-                      `Max ${cap} mesta u ovoj sobi. `}
+                      `Soba ima ${cap} kreveta — radniku će biti prikazano da donese ${u.people_count - cap} dodatnih. `}
                   </div>
                 )}
               </div>

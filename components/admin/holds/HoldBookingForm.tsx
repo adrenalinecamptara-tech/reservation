@@ -138,11 +138,8 @@ export function HoldBookingForm({ cabins }: Props) {
         setError("Svaka soba mora imati bar 1 osobu.");
         return;
       }
-      const cap = cabinCapacity(unit.cabin_id, unit.floor);
-      if (unit.people_count > cap) {
-        setError(`Izabrana soba prima max ${cap} osoba.`);
-        return;
-      }
+      // Kapacitet ne blokira — admin može dodeliti više osoba u sobu;
+      // worker dashboard će signalizirati potrebu za dodatnim krevetom.
       const match = availability.find(
         (a) => a.cabin_id === unit.cabin_id && a.floor === unit.floor,
       );

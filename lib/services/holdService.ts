@@ -96,14 +96,9 @@ async function assertUnitsValid(
   for (const unit of units) {
     const cabin = cabinMap.get(unit.cabin_id);
     if (!cabin) throw new Error("Izabrani bungalov ne postoji.");
-    const cap = unit.floor === "ground" ? cabin.ground_beds : cabin.upper_beds;
     if (unit.people_count < 1)
       throw new Error("Svaka soba mora imati bar 1 osobu.");
-    if (unit.people_count > cap) {
-      throw new Error(
-        `${cabin.name} – ${unit.floor === "ground" ? "Prizemlje" : "Sprat"}: max ${cap} mesta.`,
-      );
-    }
+    // Kapacitet (ground_beds/upper_beds) više nije tvrda granica.
   }
 
   const sum = units.reduce((acc, unit) => acc + unit.people_count, 0);

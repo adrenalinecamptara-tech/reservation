@@ -113,6 +113,30 @@ export function OperationsView({ week, basePath }: Props) {
 
               {isOpen && (
                 <div className="ops-day-body">
+                  {d.extraBeds.length > 0 && (
+                    <div className="ops-extra-beds">
+                      <div className="ops-extra-beds-head">
+                        🛏 Dodatni kreveti potrebni
+                      </div>
+                      <ul className="ops-extra-beds-list">
+                        {d.extraBeds.map((eb, i) => (
+                          <li key={i}>
+                            <strong>
+                              {eb.cabinName} ·{" "}
+                              {eb.floor === "ground" ? "Prizemlje" : "Sprat"}
+                            </strong>{" "}
+                            — {eb.occupancy} osoba u sobi sa {eb.capacity}{" "}
+                            kreveta. Doneti{" "}
+                            <strong>+{eb.occupancy - eb.capacity}</strong>{" "}
+                            {eb.occupancy - eb.capacity === 1
+                              ? "krevet"
+                              : "kreveta"}{" "}
+                            ({eb.guestName})
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   {(d.arrivals.length > 0 || d.departures.length > 0) && (
                     <div className="ops-section">
                       {d.arrivals.length > 0 && (
@@ -259,6 +283,11 @@ export function OperationsView({ week, basePath }: Props) {
         .ops-act-count { background: rgba(232,160,48,0.25); padding: 1px 7px; border-radius: 999px; font-weight: 700; font-size: 12px; }
 
         .ops-empty { font-size: 13px; color: rgba(168,213,213,0.45); font-style: italic; padding: 8px; }
+
+        .ops-extra-beds { padding: 12px 14px; background: rgba(232,160,48,0.12); border: 1px solid rgba(232,160,48,0.45); border-radius: 10px; }
+        .ops-extra-beds-head { font-size: 12px; font-weight: 700; color: #f0c87a; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+        .ops-extra-beds-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: rgba(232,245,245,0.9); }
+        .ops-extra-beds-list strong { color: #ffd89a; }
       `}</style>
     </div>
   );
