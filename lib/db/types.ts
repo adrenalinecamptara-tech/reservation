@@ -115,6 +115,7 @@ export interface Reservation {
   date_of_birth?: string | null; // ISO date string
   referral_source?: string | null;
   referral_source_other?: string | null;
+  accommodation_type?: import("@/lib/constants/accommodation").AccommodationType;
   // Faza 2: gostov izbor (choice slots + addons), snapshot rasporeda i izracunata cena
   selections?: import("@/lib/constants/activities").Selections | null;
   day_schedule_snapshot?:
@@ -147,6 +148,7 @@ export interface ReservationInsert {
   date_of_birth?: string | null;
   referral_source?: string | null;
   referral_source_other?: string | null;
+  accommodation_type?: import("@/lib/constants/accommodation").AccommodationType;
   selections?: import("@/lib/constants/activities").Selections | null;
   day_schedule_snapshot?:
     | import("@/lib/constants/activities").PackageDay[]
@@ -185,6 +187,7 @@ export interface ReservationUpdate {
   date_of_birth?: string | null;
   referral_source?: string | null;
   referral_source_other?: string | null;
+  accommodation_type?: import("@/lib/constants/accommodation").AccommodationType;
   selections?: import("@/lib/constants/activities").Selections | null;
   day_schedule_snapshot?:
     | import("@/lib/constants/activities").PackageDay[]

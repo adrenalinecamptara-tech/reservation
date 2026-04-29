@@ -15,6 +15,7 @@ import {
   type PackageDay,
   type Selections,
 } from "@/lib/constants/activities";
+import { tentCount } from "@/lib/constants/accommodation";
 import {
   addDays,
   deriveDeparture,
@@ -37,6 +38,12 @@ export interface ExtraBedNeeded {
   guestName: string;
 }
 
+export interface TentInfo {
+  count: number; // ukupan broj šatora svih grupa tog dana
+  people: number; // ukupno ljudi u šatorima
+  groups: Array<{ guestName: string; people: number; tents: number }>;
+}
+
 export interface DayOperations {
   date: string;
   dayLabel: string;
@@ -46,6 +53,7 @@ export interface DayOperations {
   meals: Record<MealType, number>;
   activities: Partial<Record<ActivityType, GuestRef[]>>;
   extraBeds: ExtraBedNeeded[];
+  tents: TentInfo;
 }
 
 export interface WeekOperations {
@@ -175,17 +183,28 @@ function applyReservation(
     const dayOps = byDate.get(iso);
     if (!dayOps) continue;
 
-    // inCamp i extraBeds samo za noći boravka (ne za dan odlaska)
+    // inCamp i extraBeds/tents samo za noći boravka (ne za dan odlaska)
     if (idx < stayNights.length) {
       dayOps.inCampPeople += res.number_of_people;
-      for (const u of units) {
-        pushExtraBed(
-          dayOps,
-          cabinMap.get(u.cabin_id),
-          u.floor,
-          u.people_count,
-          ref.name,
-        );
+      if (res.accommodation_type === "tent") {
+        const tents = tentCount(res.number_of_people);
+        dayOps.tents.count += tents;
+        dayOps.tents.people += res.number_of_people;
+        dayOps.tents.groups.push({
+          guestName: ref.name,
+          people: res.number_of_people,
+          tents,
+        });
+      } else {
+        for (const u of units) {
+          pushExtraBed(
+            dayOps,
+            cabinMap.get(u.cabin_id),
+            u.floor,
+            u.people_count,
+            ref.name,
+          );
+        }
       }
     }
 
@@ -344,6 +363,7 @@ export async function getWeekOperations(
       meals: emptyMeals(),
       activities: {},
       extraBeds: [],
+      tents: { count: 0, people: 0, groups: [] },
     }),
   );
   const byDate = new Map(dayList.map((d) => [d.date, d]));

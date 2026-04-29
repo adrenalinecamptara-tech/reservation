@@ -43,10 +43,11 @@ export const groupDetailsSchema = z.object({
     .number({ error: "Unesite broj osoba" })
     .int()
     .min(1, "Minimum 1 osoba")
-    .max(40, "Maksimum 40 osoba"),
+    .max(60, "Maksimum 60 osoba"),
   arrival_date: z.string().min(1, "Odaberite datum dolaska"),
   package_type: z.string().optional(),
   package_id: z.string().uuid({ message: "Odaberite paket" }),
+  accommodation_type: z.enum(["bungalow", "tent"]),
 });
 
 /**

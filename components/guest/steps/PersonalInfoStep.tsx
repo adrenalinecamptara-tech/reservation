@@ -123,6 +123,7 @@ export function PersonalInfoStep() {
           type="date"
           className={`act-input ${errors.date_of_birth ? "act-input--error" : ""}`}
           {...register("date_of_birth")}
+          style={{ colorScheme: "dark" }}
         />
         {errors.date_of_birth && (
           <p className="act-error">{errors.date_of_birth.message}</p>

@@ -95,6 +95,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           "@/lib/services/pricingService"
         );
         const catalog = await listCatalog(true);
+        const accommodationType =
+          body.accommodation_type ?? current.accommodation_type ?? "bungalow";
         const quote = computeQuote({
           pkg,
           catalog,
@@ -102,6 +104,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           weekend: isWeekendArrival(arrival),
           people,
           scheduleOverride: snapshot,
+          accommodationType,
         });
         body.computed_total = quote.total;
       }

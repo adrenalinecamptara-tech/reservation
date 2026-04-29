@@ -56,6 +56,43 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Server-side recompute computed_total — ne oslanjamo se na klijenta
+  // (kasniji bug fixovi/akomodacioni tip moraju da se odraze u DB).
+  const accommodationType = parsed.data.accommodation_type ?? "bungalow";
+  let computedTotal = parsed.data.computed_total ?? null;
+  if (parsed.data.package_id && parsed.data.arrival_date) {
+    try {
+      const { createServiceClient } = await import("@/lib/db/supabase");
+      const { data: pkg } = await createServiceClient()
+        .from("packages")
+        .select("*")
+        .eq("id", parsed.data.package_id)
+        .single();
+      if (pkg) {
+        const { listCatalog } = await import("@/lib/services/catalogService");
+        const { computeQuote, isWeekendArrival } = await import(
+          "@/lib/services/pricingService"
+        );
+        const catalog = await listCatalog(true);
+        const quote = computeQuote({
+          pkg,
+          catalog,
+          selections: parsed.data.selections ?? null,
+          weekend: isWeekendArrival(parsed.data.arrival_date),
+          people: parsed.data.number_of_people,
+          scheduleOverride:
+            (parsed.data.day_schedule_snapshot as
+              | ReservationInsert["day_schedule_snapshot"]
+              | null) ?? null,
+          accommodationType,
+        });
+        computedTotal = quote.total;
+      }
+    } catch (err) {
+      console.error("[POST reservations] server-side recompute failed:", err);
+    }
+  }
+
   const reservation = await createReservation(
     {
       ...parsed.data,
@@ -65,12 +102,11 @@ export async function POST(req: NextRequest) {
       referral_source: parsed.data.referral_source,
       referral_source_other: parsed.data.referral_source_other,
       selections: parsed.data.selections ?? null,
-      // Cast: Zod schema dozvoljava bilo koji string — server-side validacija
-      // preko computeQuote pravi striktnu proveru.
+      accommodation_type: accommodationType,
       day_schedule_snapshot:
         (parsed.data.day_schedule_snapshot as ReservationInsert["day_schedule_snapshot"]) ??
         null,
-      computed_total: parsed.data.computed_total ?? null,
+      computed_total: computedTotal,
     },
     token,
   );

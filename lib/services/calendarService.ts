@@ -11,8 +11,8 @@ import type {
 export interface OccupiedReservation {
   id: string;
   kind: "guest" | "partner" | "hold";
-  cabin_id: string;
-  floor: Floor;
+  cabin_id: string | null;
+  floor: Floor | null;
   arrival: string;
   departure: string;
   status: ReservationStatus | `hold_${HoldStatus}`;
@@ -24,6 +24,7 @@ export interface OccupiedReservation {
   partner_name?: string | null;
   hold_contact?: string | null;
   hold_until_date?: string | null;
+  accommodation_type?: "bungalow" | "tent";
 }
 
 export interface AvailableUnit {
@@ -111,6 +112,7 @@ function reservationToOccupied(r: ReservationWithUnits): OccupiedReservation[] {
     r.departure_date,
     r.package_type,
   );
+  const accommodationType = r.accommodation_type ?? "bungalow";
   const base = {
     id: r.id,
     kind: "guest" as const,
@@ -121,7 +123,19 @@ function reservationToOccupied(r: ReservationWithUnits): OccupiedReservation[] {
     last_name: r.last_name,
     package_type: r.package_type,
     voucher_number: r.voucher_number,
+    accommodation_type: accommodationType,
   };
+  // Šator — emituje se kao jedan red bez cabin/floor
+  if (accommodationType === "tent") {
+    return [
+      {
+        ...base,
+        cabin_id: null,
+        floor: null,
+        number_of_people: r.number_of_people,
+      },
+    ];
+  }
   const units = r.reservation_units ?? [];
   if (units.length > 0) {
     return units.map((u) => ({

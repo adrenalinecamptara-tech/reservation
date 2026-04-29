@@ -144,8 +144,19 @@ export default async function VerifyPage({ params }: Props) {
                 <Row label="Datum odlaska" value={formatDate(reservation.departure_date)} />
               )}
               <Row label="Broj osoba" value={String(reservation.number_of_people)} />
-              {reservation.cabin && (
+              {reservation.accommodation_type === "tent" ? (
+                <Row
+                  label="Smeštaj"
+                  value={`⛺ Šator — ${Math.max(1, Math.ceil(reservation.number_of_people / 2))} ${
+                    Math.ceil(reservation.number_of_people / 2) === 1
+                      ? "šator"
+                      : "šatora"
+                  }`}
+                />
+              ) : reservation.cabin ? (
                 <Row label="Bungalov" value={`${reservation.cabin.name}${reservation.floor ? ` — ${reservation.floor === "ground" ? "Prizemlje" : "Sprat"}` : ""}`} />
+              ) : (
+                <Row label="Smeštaj" value="🏠 Bungalov (nije dodeljen)" />
               )}
             </Section>
 

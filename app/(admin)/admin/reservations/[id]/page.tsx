@@ -149,6 +149,7 @@ export default async function ReservationDetailPage({ params }: Props) {
               initialSelections={reservation.selections ?? null}
               initialComputedTotal={reservation.computed_total ?? null}
               catalog={catalog ?? []}
+              accommodationType={reservation.accommodation_type ?? "bungalow"}
             />
           </section>
 

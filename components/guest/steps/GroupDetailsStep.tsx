@@ -8,7 +8,7 @@ import {
   type GroupDetailsValues,
 } from "@/lib/validations/registrationSchema";
 import { useRegistrationStore } from "@/lib/store/registrationStore";
-import { calcTotal, isWeekendArrival } from "@/lib/utils/pricing";
+import { isWeekendArrival } from "@/lib/utils/pricing";
 import type { Package } from "@/lib/db/types";
 
 export function GroupDetailsStep() {
@@ -42,12 +42,14 @@ export function GroupDetailsStep() {
       number_of_people: (groupDetails.number_of_people as number) || undefined,
       package_id: groupDetails.package_id ?? undefined,
       package_type: groupDetails.package_type ?? "",
+      accommodation_type: groupDetails.accommodation_type ?? "bungalow",
     },
   });
 
   const watchedPackageId = watch("package_id");
   const watchedPeople = watch("number_of_people");
   const watchedDate = watch("arrival_date");
+  const watchedAccommodation = watch("accommodation_type");
 
   // Resolve selected package object
   const selectedPkg = packages.find((p) => p.id === watchedPackageId) ?? null;
@@ -59,10 +61,18 @@ export function GroupDetailsStep() {
     selectedPkg.weekday_price === 0
   );
 
+  // Šator uvek koristi radnu cenu — efektivni "vikend" je false
+  const isTent = watchedAccommodation === "tent";
+  const effectiveWeekend = !isTent && watchedDate ? isWeekendArrival(watchedDate) : false;
   // Live price preview (not applicable for custom packages)
   const liveTotal =
     selectedPkg && !isCustomPkg && watchedPeople >= 1 && watchedDate
-      ? calcTotal(selectedPkg, watchedPeople, watchedDate)
+      ? watchedPeople *
+        Number(
+          effectiveWeekend
+            ? selectedPkg.weekend_price
+            : selectedPkg.weekday_price,
+        )
       : null;
 
   const isWeekend = watchedDate ? isWeekendArrival(watchedDate) : null;
@@ -80,9 +90,10 @@ export function GroupDetailsStep() {
     const pkgIsCustom =
       pkg && pkg.weekend_price === 0 && pkg.weekday_price === 0;
     if (pkg && !pkgIsCustom && data.number_of_people && data.arrival_date) {
-      setCalculatedTotal(
-        calcTotal(pkg, data.number_of_people, data.arrival_date),
-      );
+      const tent = data.accommodation_type === "tent";
+      const isWeekendDate = tent ? false : isWeekendArrival(data.arrival_date);
+      const unit = isWeekendDate ? pkg.weekend_price : pkg.weekday_price;
+      setCalculatedTotal(data.number_of_people * Number(unit));
     } else {
       setCalculatedTotal(null);
     }
@@ -120,6 +131,32 @@ export function GroupDetailsStep() {
               : "🟢 Radni dan — primenjuje se cena radnog dana"}
           </p>
         )}
+      </div>
+
+      <div className="act-field">
+        <label className="act-label">Smeštaj</label>
+        <div className="act-acc-row">
+          <label className={`act-acc-opt ${watchedAccommodation === "bungalow" ? "act-acc-opt--on" : ""}`}>
+            <input
+              type="radio"
+              value="bungalow"
+              {...register("accommodation_type")}
+            />
+            <span className="act-acc-emoji">🏠</span>
+            <span className="act-acc-label">Bungalov</span>
+            <span className="act-acc-sub">do 6 / 4 osobe po jedinici</span>
+          </label>
+          <label className={`act-acc-opt ${watchedAccommodation === "tent" ? "act-acc-opt--on" : ""}`}>
+            <input
+              type="radio"
+              value="tent"
+              {...register("accommodation_type")}
+            />
+            <span className="act-acc-emoji">⛺</span>
+            <span className="act-acc-label">Šator</span>
+            <span className="act-acc-sub">2 osobe / šator · radna cena</span>
+          </label>
+        </div>
       </div>
 
       <div className="act-field">
@@ -169,12 +206,18 @@ export function GroupDetailsStep() {
           <div className="act-price-row">
             <span className="act-price-label">Cena po osobi</span>
             <span className="act-price-val">
-              {isWeekend
+              {effectiveWeekend
                 ? selectedPkg.weekend_price
                 : selectedPkg.weekday_price}{" "}
               €
               <span className="act-price-type">
-                ({isWeekend ? "vikend" : "radni dan"})
+                (
+                {isTent
+                  ? "šator — radna cena"
+                  : effectiveWeekend
+                    ? "vikend"
+                    : "radni dan"}
+                )
               </span>
             </span>
           </div>
@@ -211,6 +254,16 @@ export function GroupDetailsStep() {
       </div>
 
       <style>{`
+        .act-acc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        @media (max-width: 420px) { .act-acc-row { grid-template-columns: 1fr; } }
+        .act-acc-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 14px 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(62,140,140,0.2); border-radius: 10px; cursor: pointer; transition: all 0.2s; position: relative; }
+        .act-acc-opt input { position: absolute; opacity: 0; }
+        .act-acc-opt:hover { border-color: rgba(58,144,144,0.5); background: rgba(58,144,144,0.06); }
+        .act-acc-opt--on { border-color: rgba(58,144,144,0.8); background: rgba(58,144,144,0.12); box-shadow: 0 0 0 2px rgba(58,144,144,0.2); }
+        .act-acc-emoji { font-size: 24px; }
+        .act-acc-label { font-size: 15px; font-weight: 600; color: #e8f5f5; }
+        .act-acc-sub { font-size: 11px; color: rgba(168,213,213,0.55); }
+
         .act-price-note { font-size: 12px; color: rgba(168,213,213,0.5); margin-top: 4px; }
         .act-price-card { background: rgba(30,77,77,0.15); border: 1px solid rgba(62,140,140,0.2); border-radius: 10px; padding: 14px 16px; margin: 4px 0 16px; }
         .act-price-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }

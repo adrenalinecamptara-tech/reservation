@@ -113,6 +113,24 @@ export function OperationsView({ week, basePath }: Props) {
 
               {isOpen && (
                 <div className="ops-day-body">
+                  {d.tents.count > 0 && (
+                    <div className="ops-tents">
+                      <div className="ops-tents-head">
+                        ⛺ Šatori — pripremi {d.tents.count}{" "}
+                        {d.tents.count === 1 ? "šator" : "šatora"} ({d.tents.people}{" "}
+                        {d.tents.people === 1 ? "osoba" : "osoba"})
+                      </div>
+                      <ul className="ops-tents-list">
+                        {d.tents.groups.map((g, i) => (
+                          <li key={i}>
+                            <strong>{g.guestName}</strong> — {g.people}{" "}
+                            {g.people === 1 ? "osoba" : "osoba"} · {g.tents}{" "}
+                            {g.tents === 1 ? "šator" : "šatora"}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   {d.extraBeds.length > 0 && (
                     <div className="ops-extra-beds">
                       <div className="ops-extra-beds-head">
@@ -288,6 +306,11 @@ export function OperationsView({ week, basePath }: Props) {
         .ops-extra-beds-head { font-size: 12px; font-weight: 700; color: #f0c87a; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
         .ops-extra-beds-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: rgba(232,245,245,0.9); }
         .ops-extra-beds-list strong { color: #ffd89a; }
+
+        .ops-tents { padding: 12px 14px; background: rgba(58,170,112,0.1); border: 1px solid rgba(58,170,112,0.4); border-radius: 10px; }
+        .ops-tents-head { font-size: 12px; font-weight: 700; color: #a7e8c5; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+        .ops-tents-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: rgba(232,245,245,0.9); }
+        .ops-tents-list strong { color: #c8f5dc; }
       `}</style>
     </div>
   );

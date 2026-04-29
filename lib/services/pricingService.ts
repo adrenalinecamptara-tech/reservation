@@ -38,6 +38,8 @@ export interface QuoteInput {
   people: number;
   /** Snapshot/override day_schedule (za custom builder paket) */
   scheduleOverride?: PackageDay[] | null;
+  /** "tent" → uvek weekday_price (popust). Default "bungalow". */
+  accommodationType?: "bungalow" | "tent";
 }
 
 const FREE_KINDS = new Set(["marker"]);
@@ -76,13 +78,23 @@ function priceFor(
  * - addon ne sme biti vec u rasporedu (kao static ili rezolvovan choice)
  */
 export function computeQuote(input: QuoteInput): Quote {
-  const { pkg, catalog, selections, weekend, people, scheduleOverride } = input;
+  const {
+    pkg,
+    catalog,
+    selections,
+    weekend,
+    people,
+    scheduleOverride,
+    accommodationType,
+  } = input;
   const byCode = new Map(catalog.map((i) => [i.code, i]));
   const schedule = scheduleOverride ?? pkg.day_schedule ?? [];
   const sel: Selections = selections ?? {};
 
+  // Šator uvek po radnoj ceni, čak i vikendom
+  const useWeekend = accommodationType === "tent" ? false : weekend;
   const basePackagePrice =
-    Number(weekend ? pkg.weekend_price : pkg.weekday_price) * people;
+    Number(useWeekend ? pkg.weekend_price : pkg.weekday_price) * people;
 
   const lines: QuoteLine[] = [];
   const errors: string[] = [];

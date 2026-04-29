@@ -127,4 +127,11 @@
   html {
     @apply font-sans;
   }
+  /* Date picker icona belа na tamnoj pozadini umesto crne — primenjuje
+     se globalno na sve <input type="date"> i type="datetime-local". */
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"] {
+    color-scheme: dark;
+  }
 }

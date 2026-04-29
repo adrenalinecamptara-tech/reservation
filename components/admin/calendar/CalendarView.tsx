@@ -174,8 +174,9 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
     return rows;
   }, [cabins]);
 
-  const barsByUnit: Map<string, Bar[]> = useMemo(() => {
+  const { barsByUnit, tentBars } = useMemo(() => {
     const map = new Map<string, Bar[]>();
+    const tents: Bar[] = [];
     for (const r of reservations) {
       const start = r.arrival < monthStart ? monthStart : r.arrival;
       const endExcl =
@@ -192,13 +193,39 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
         clippedLeft: r.arrival < monthStart,
         clippedRight: r.departure > monthEndExclusive,
       };
+      if (r.accommodation_type === "tent") {
+        tents.push(bar);
+        continue;
+      }
+      if (!r.cabin_id || !r.floor) continue;
       const key = `${r.cabin_id}:${r.floor}`;
       const list = map.get(key) ?? [];
       list.push(bar);
       map.set(key, list);
     }
-    return map;
+    return { barsByUnit: map, tentBars: tents };
   }, [reservations, monthStart, monthEndExclusive, totalDays]);
+
+  // Greedy lane assignment za šator-rezervacije (više grupa istog datuma → stack)
+  const tentLanes: Array<Bar & { lane: number }> = useMemo(() => {
+    const sorted = [...tentBars].sort((a, b) => a.startIdx - b.startIdx);
+    const laneEnds: number[] = []; // laneEnds[i] = startIdx + span za poslednjeg na lane-u i
+    const out: Array<Bar & { lane: number }> = [];
+    for (const bar of sorted) {
+      let lane = laneEnds.findIndex((end) => end <= bar.startIdx);
+      if (lane === -1) {
+        lane = laneEnds.length;
+        laneEnds.push(0);
+      }
+      laneEnds[lane] = bar.startIdx + bar.span;
+      out.push({ ...bar, lane });
+    }
+    return out;
+  }, [tentBars]);
+  const tentLaneCount = useMemo(
+    () => tentLanes.reduce((mx, b) => Math.max(mx, b.lane + 1), 0),
+    [tentLanes],
+  );
 
   const prevHref = (() => {
     const prev =
@@ -278,6 +305,7 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
             </div>
           </div>
 
+          {/* Tent section — ispod bungalova; render tek nakon unit rows */}
           {/* Unit rows */}
           {units.map((u) => {
             const key = `${u.cabin_id}:${u.floor}`;
@@ -354,6 +382,76 @@ export function CalendarView({ year, month, reservations, cabins }: Props) {
               </div>
             );
           })}
+
+          {/* Šator sekcija — multi-lane stacking */}
+          {tentLaneCount > 0 && (
+            <div className="cal-gantt-row cal-gantt-row-tents">
+              <div className="cal-gantt-label" title="Šator zona">
+                <div className="cal-gantt-label-name">⛺ Šator</div>
+                <div className="cal-gantt-label-floor">
+                  neograničeno mesta
+                </div>
+              </div>
+              <div
+                className="cal-gantt-track cal-gantt-track-tents"
+                style={{
+                  gridTemplateColumns: `repeat(${totalDays}, minmax(30px, 1fr))`,
+                  height: `${tentLaneCount * 26 + 6}px`,
+                }}
+              >
+                {days.map((d) => (
+                  <div
+                    key={d}
+                    className={`cal-gantt-cell ${isWeekend(d) ? "cal-cell-wknd" : ""} ${d === todayIso ? "cal-cell-today" : ""}`}
+                  />
+                ))}
+                {tentLanes.map((bar) => {
+                  const meta = statusMeta(bar.reservation);
+                  return (
+                    <button
+                      key={`tent-${bar.reservation.id}`}
+                      className="cal-bar cal-bar-tent"
+                      style={{
+                        left: `${bar.leftPct}%`,
+                        width: `calc(${bar.widthPct}% - 4px)`,
+                        top: `${bar.lane * 26 + 3}px`,
+                        background: meta.bg,
+                        color: meta.text,
+                        borderColor: meta.border,
+                        borderLeftWidth: bar.clippedLeft ? 0 : 1,
+                        borderRightWidth: bar.clippedRight ? 0 : 1,
+                        borderTopLeftRadius: bar.clippedLeft ? 0 : 4,
+                        borderBottomLeftRadius: bar.clippedLeft ? 0 : 4,
+                        borderTopRightRadius: bar.clippedRight ? 0 : 4,
+                        borderBottomRightRadius: bar.clippedRight ? 0 : 4,
+                      }}
+                      onClick={() => {
+                        if (bar.reservation.kind === "partner")
+                          router.push(`/admin/partners`);
+                        else
+                          router.push(
+                            `/admin/reservations/${bar.reservation.id}`,
+                          );
+                      }}
+                      onMouseEnter={(e) =>
+                        showTip(e.currentTarget, bar.reservation)
+                      }
+                      onMouseLeave={hideTip}
+                    >
+                      <span className="cal-bar-text">
+                        {displayName(bar.reservation)}
+                        <span className="cal-bar-meta">
+                          {" "}
+                          · {bar.reservation.number_of_people}p ·{" "}
+                          {Math.ceil(bar.reservation.number_of_people / 2)}⛺
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

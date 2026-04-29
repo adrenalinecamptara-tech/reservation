@@ -23,6 +23,7 @@ interface Props {
   initialSelections: Selections | null;
   initialComputedTotal: number | null;
   catalog: ServiceCatalogItem[];
+  accommodationType?: "bungalow" | "tent";
 }
 
 interface QuoteResp {
@@ -54,6 +55,7 @@ export function SelectionsEditor({
   initialSelections,
   initialComputedTotal,
   catalog,
+  accommodationType = "bungalow",
 }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -78,6 +80,7 @@ export function SelectionsEditor({
         arrival_date: arrivalDate,
         selections: sel,
         schedule_override: schedule,
+        accommodation_type: accommodationType,
       }),
       signal: ctrl.signal,
     })
@@ -86,7 +89,7 @@ export function SelectionsEditor({
       .catch(() => {})
       .finally(() => setQuoting(false));
     return () => ctrl.abort();
-  }, [packageId, people, arrivalDate, sel, schedule]);
+  }, [packageId, people, arrivalDate, sel, schedule, accommodationType]);
 
   const occupiedByDay = useMemo(() => {
     if (!schedule) return [];

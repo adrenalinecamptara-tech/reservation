@@ -15,6 +15,7 @@ interface Body {
   weekend?: boolean;
   selections?: Selections;
   schedule_override?: PackageDay[]; // za custom builder
+  accommodation_type?: "bungalow" | "tent";
 }
 
 /**
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
       weekend,
       people: body.people,
       scheduleOverride: body.schedule_override ?? null,
+      accommodationType: body.accommodation_type ?? "bungalow",
     });
 
     return NextResponse.json({ quote, weekend });

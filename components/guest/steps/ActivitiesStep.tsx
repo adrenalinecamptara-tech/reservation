@@ -63,6 +63,7 @@ export function ActivitiesStep() {
   const packageId = groupDetails.package_id ?? "";
   const arrivalDate = groupDetails.arrival_date ?? "";
   const people = groupDetails.number_of_people ?? 1;
+  const accommodationType = groupDetails.accommodation_type ?? "bungalow";
 
   // Load package + catalog
   useEffect(() => {
@@ -102,6 +103,7 @@ export function ActivitiesStep() {
         people,
         arrival_date: arrivalDate,
         selections: sel,
+        accommodation_type: accommodationType,
       }),
       signal: ctrl.signal,
     })
@@ -110,7 +112,7 @@ export function ActivitiesStep() {
       .catch(() => {})
       .finally(() => setQuoting(false));
     return () => ctrl.abort();
-  }, [pkg, people, arrivalDate, sel]);
+  }, [pkg, people, arrivalDate, sel, accommodationType]);
 
   // Build occupied set per day for addon disabling
   const occupiedByDay = useMemo(() => {
