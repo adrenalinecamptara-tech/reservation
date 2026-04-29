@@ -33,6 +33,7 @@ export function PartnerBookingForm({ partners, cabins, packages }: Props) {
     partners[0]?.default_price_per_person ?? 25
   );
   const [packageId, setPackageId] = useState<string>("");
+  const [raftingPeople, setRaftingPeople] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +92,7 @@ export function PartnerBookingForm({ partners, cabins, packages }: Props) {
           number_of_people: numberOfPeople,
           price_per_person: pricePerPerson,
           package_id: packageId || null,
+          rafting_people: raftingPeople.trim() === "" ? null : Number(raftingPeople),
           notes: notes.trim() || null,
         }),
       });
@@ -292,6 +294,23 @@ export function PartnerBookingForm({ partners, cabins, packages }: Props) {
               ))}
           </select>
         </label>
+
+        {packageId && (
+          <label className="pbf-label">
+            <span>
+              Broj ljudi za rafting (prazno = svi iz grupe, {numberOfPeople})
+            </span>
+            <input
+              type="number"
+              min={0}
+              max={numberOfPeople}
+              value={raftingPeople}
+              onChange={(e) => setRaftingPeople(e.target.value)}
+              className="pbf-input"
+              placeholder={`Default: ${numberOfPeople} (svi)`}
+            />
+          </label>
+        )}
 
         <label className="pbf-label">
           <span>Napomena (opciono)</span>

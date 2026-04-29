@@ -318,7 +318,19 @@ function applyPartnerBooking(
     });
     entry.activities.forEach((e) => {
       const code = isChoice(e) ? e[0] : e;
-      if (code && isActivity(code)) pushActivity(dayOps, code, ref);
+      if (!code || !isActivity(code)) return;
+      // Rafting moze imati delimicno ucesce grupe (b.rafting_people)
+      if (code === "rafting" && b.rafting_people != null) {
+        if (b.rafting_people <= 0) return; // 0 = niko ne ide
+        const partial: GuestRef = {
+          ...ref,
+          people: b.rafting_people,
+          name: `${ref.name} (${b.rafting_people}/${b.number_of_people})`,
+        };
+        pushActivity(dayOps, code, partial);
+      } else {
+        pushActivity(dayOps, code, ref);
+      }
     });
   }
 }
@@ -340,7 +352,7 @@ export async function getWeekOperations(
       supabase
         .from("partner_bookings")
         .select(
-          "id, partner_id, cabin_id, floor, arrival_date, nights, number_of_people, price_per_person, notes, paid_at, paid_by, created_by, created_at, package_id, partner:partners(name)",
+          "id, partner_id, cabin_id, floor, arrival_date, nights, number_of_people, price_per_person, notes, paid_at, paid_by, created_by, created_at, package_id, rafting_people, partner:partners(name)",
         )
         .lt("arrival_date", endExclusive),
       supabase.from("packages").select("*"),

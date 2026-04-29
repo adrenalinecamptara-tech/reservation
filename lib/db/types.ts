@@ -234,6 +234,7 @@ export interface PartnerBooking {
   created_by: string | null;
   created_at: string;
   package_id: string | null;
+  rafting_people: number | null;
   partner?: Partner;
   cabin?: Cabin;
   package?: Package;
@@ -250,6 +251,7 @@ export interface PartnerBookingInsert {
   notes?: string | null;
   created_by?: string | null;
   package_id?: string | null;
+  rafting_people?: number | null;
 }
 
 export interface ReservationHold {

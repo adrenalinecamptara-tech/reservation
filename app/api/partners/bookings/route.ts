@@ -20,6 +20,10 @@ export async function POST(req: NextRequest) {
       price_per_person: Number(body.price_per_person),
       notes: body.notes ?? null,
       package_id: body.package_id ? String(body.package_id) : null,
+      rafting_people:
+        body.rafting_people === "" || body.rafting_people == null
+          ? null
+          : Number(body.rafting_people),
       created_by: user.email ?? user.id,
     });
     return NextResponse.json(booking);
