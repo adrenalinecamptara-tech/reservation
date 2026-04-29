@@ -217,6 +217,7 @@ export function ReservationActions({ reservation, cabins }: Props) {
     departure_date: reservation.departure_date ?? "",
     package_id: reservation.package_id ?? "",
     package_type: reservation.package_type ?? "",
+    accommodation_type: reservation.accommodation_type ?? "bungalow",
     deposit_amount: String(reservation.deposit_amount),
     total_amount:
       reservation.total_amount != null ? String(reservation.total_amount) : "",
@@ -236,7 +237,11 @@ export function ReservationActions({ reservation, cabins }: Props) {
     const people = parseInt(nextEdit.number_of_people, 10);
     if (isNaN(people) || people < 1) return nextEdit;
 
-    const total = calcTotal(pkg, people, nextEdit.arrival_date);
+    // Šator uvek ide po radnoj ceni — uzmi weekday_price direktno
+    const isTent = nextEdit.accommodation_type === "tent";
+    const total = isTent
+      ? Number(pkg.weekday_price) * people
+      : calcTotal(pkg, people, nextEdit.arrival_date);
     const deposit = parseFloat(nextEdit.deposit_amount) || 0;
     const remaining = calcRemaining(total, deposit);
 
@@ -301,6 +306,7 @@ export function ReservationActions({ reservation, cabins }: Props) {
         departure_date: edit.departure_date || null,
         package_id: edit.package_id || null,
         package_type: edit.package_type || null,
+        accommodation_type: edit.accommodation_type,
         deposit_amount: parseFloat(edit.deposit_amount),
         total_amount: edit.total_amount ? parseFloat(edit.total_amount) : null,
         remaining_amount: edit.remaining_amount
@@ -573,6 +579,28 @@ export function ReservationActions({ reservation, cabins }: Props) {
                 </div>
               </div>
 
+              <div className="adm-edit-row">
+                <div className="adm-edit-field">
+                  <label>Tip smeštaja</label>
+                  <select
+                    className="adm-input"
+                    value={edit.accommodation_type}
+                    onChange={(e) => {
+                      const next = {
+                        ...edit,
+                        accommodation_type: e.target.value as
+                          | "bungalow"
+                          | "tent",
+                      };
+                      setEdit(recalcPrices(next));
+                    }}
+                  >
+                    <option value="bungalow">🏠 Bungalov</option>
+                    <option value="tent">⛺ Šator (radna cena)</option>
+                  </select>
+                </div>
+              </div>
+
               <div className="adm-edit-section-label">Finansije</div>
               <div className="adm-edit-row">
                 <div className="adm-edit-field">
@@ -691,6 +719,21 @@ export function ReservationActions({ reservation, cabins }: Props) {
       {/* ── Cabin assignment (multi-unit) ── */}
       <section className="adm-card">
         <h2 className="adm-card-title">Smeštaj</h2>
+        {reservation.accommodation_type === "tent" ? (
+          <div className="adm-tent-notice">
+            ⛺ Ovo je rezervacija za <strong>šator</strong> ({reservation.number_of_people}{" "}
+            {reservation.number_of_people === 1 ? "osoba" : "osoba"} ·{" "}
+            {Math.max(1, Math.ceil(reservation.number_of_people / 2))}{" "}
+            {Math.ceil(reservation.number_of_people / 2) === 1
+              ? "šator"
+              : "šatora"}
+            ).
+            <br />
+            Ako želite da dodelite bungalov, prvo promenite tip smeštaja
+            rezervacije iz „Šator" u „Bungalov".
+          </div>
+        ) : (
+          <>
         <div className="adm-units-hdr">
           <span>
             Ukupno gostiju: <strong>{reservation.number_of_people}</strong>
@@ -905,6 +948,8 @@ export function ReservationActions({ reservation, cabins }: Props) {
         >
           {loading === "cabin" ? "Čuvam..." : "Sačuvaj smeštaj"}
         </button>
+          </>
+        )}
       </section>
 
       {/* ── Admin notes ── */}
@@ -1002,6 +1047,8 @@ export function ReservationActions({ reservation, cabins }: Props) {
         .adm-cabin-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .adm-cabin-hint { font-size: 11px; color: rgba(168,213,213,0.55); margin-top: 8px; line-height: 1.5; }
         .adm-units-hdr { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: rgba(168,213,213,0.65); margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid rgba(62,140,140,0.12); flex-wrap: wrap; }
+        .adm-tent-notice { padding: 16px; background: rgba(58,144,144,0.08); border: 1px solid rgba(58,144,144,0.3); border-radius: 10px; color: #a8d5d5; font-size: 13px; line-height: 1.6; }
+        .adm-tent-notice strong { color: #e8f5f5; }
         .adm-unit-row { padding: 10px; background: rgba(255,255,255,0.02); border: 1px solid rgba(62,140,140,0.12); border-radius: 8px; margin-bottom: 8px; }
         .adm-unit-idx { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(168,213,213,0.5); margin-bottom: 6px; }
         .adm-unit-fields { display: grid; grid-template-columns: 1fr 1fr 80px auto; gap: 6px; align-items: center; }
