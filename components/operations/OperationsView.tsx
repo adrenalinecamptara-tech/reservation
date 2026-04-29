@@ -281,11 +281,14 @@ export function OperationsView({ week, basePath }: Props) {
 
         .ops-list { list-style: none; display: flex; flex-direction: column; gap: 4px; padding: 0; }
         .ops-list-expanded { margin-top: 8px; padding: 8px 10px; background: rgba(0,0,0,0.25); border-radius: 6px; }
-        .ops-guest { display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(232,245,245,0.85); padding: 4px 8px; border-radius: 6px; }
+        .ops-guest { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: rgba(232,245,245,0.85); padding: 6px 8px; border-radius: 6px; }
         .ops-guest:hover { background: rgba(58,144,144,0.08); }
+        .ops-guest-body { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+        .ops-guest-line { display: flex; align-items: center; gap: 8px; }
+        .ops-guest-acc { font-size: 11px; color: rgba(168,213,213,0.55); padding-left: 22px; }
         .ops-guest-tag { font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 700; letter-spacing: 0.05em; }
         .ops-guest-tag-partner { background: rgba(139,92,246,0.18); color: #c8a9f0; }
-        .ops-guest-link { color: inherit; text-decoration: none; flex: 1; display: flex; align-items: center; gap: 8px; }
+        .ops-guest-link { color: inherit; text-decoration: none; flex: 1; display: block; }
         .ops-guest-people { color: rgba(168,213,213,0.55); font-size: 12px; }
 
         .ops-meals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -324,13 +327,18 @@ function GuestItem({
   basePath?: string;
 }) {
   const inner = (
-    <>
-      <span className="ops-guest-people">👥 {guest.people}</span>
-      <span>{guest.name}</span>
-      {guest.kind === "partner" && (
-        <span className="ops-guest-tag ops-guest-tag-partner">PARTNER</span>
+    <div className="ops-guest-body">
+      <div className="ops-guest-line">
+        <span className="ops-guest-people">👥 {guest.people}</span>
+        <span>{guest.name}</span>
+        {guest.kind === "partner" && (
+          <span className="ops-guest-tag ops-guest-tag-partner">PARTNER</span>
+        )}
+      </div>
+      {guest.accommodation && (
+        <div className="ops-guest-acc">{guest.accommodation}</div>
       )}
-    </>
+    </div>
   );
   // Worker dashboard ne treba da linkuje na admin, samo prikazuje. Admin link
   // ka rezervacijama je samo iz /admin/operations.

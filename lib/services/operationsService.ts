@@ -28,6 +28,10 @@ export interface GuestRef {
   name: string;
   people: number;
   kind: "guest" | "partner";
+  /** Pretty-formatted accommodation: "Bungalov 1 · Prizemlje (4)" ili
+   *  "Bungalov 1 · Prizemlje (6) + Bungalov 2 · Sprat (4)" za multi-unit,
+   *  ili "⛺ 3 šatora" za šator-rezervacije. */
+  accommodation?: string;
 }
 
 export interface ExtraBedNeeded {
@@ -265,11 +269,14 @@ function applyPartnerBooking(
 ) {
   const departure = addDays(b.arrival_date, b.nights);
   const name = b.partner?.name ?? "Partner";
+  const cabin = cabinMap.get(b.cabin_id);
+  const floorLabel = b.floor === "ground" ? "Prizemlje" : "Sprat";
   const ref: GuestRef = {
     id: b.id,
     name,
     people: b.number_of_people,
     kind: "partner",
+    accommodation: `${cabin?.name ?? "Bungalov"} · ${floorLabel} (${b.number_of_people})`,
   };
 
   const arr = byDate.get(b.arrival_date);
